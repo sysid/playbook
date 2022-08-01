@@ -82,7 +82,7 @@ by Dan Slimmon and [runbook](https://github.com/UnquietCode/runbook.py).
 
 
 ## Changelog
-[CHANGELOG.md](CHANGELOG.md)
+[CHANGELOG.md](https://github.com/sysid/playbook/blob/master/CHANGELOG.md)
 
 
 ### License

@@ -1,7 +1,7 @@
 import re
 
 TEMPLATE = """
-from src.playbook import Playbook
+from playbook import Playbook
 
     
 class {name}(Playbook):
