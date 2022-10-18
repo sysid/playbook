@@ -1,3 +1,6 @@
+from src.playbook import Playbook
+
+
 class CustomPlaybook(Playbook):
     """
     This playbook is a basic example that exercises

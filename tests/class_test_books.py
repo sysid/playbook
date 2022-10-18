@@ -1,3 +1,6 @@
+from src.playbook import Playbook
+
+
 class BookA(Playbook):
     """
     Preamble
