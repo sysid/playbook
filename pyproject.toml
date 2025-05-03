@@ -1,0 +1,159 @@
+[project]
+name = "playbook"
+version = "0.1.0"
+authors = [
+  { name = "sysid", email = "sysid@gmx.de" },
+]
+description = "A workflow engine for operations"
+readme = "README.md"
+requires-python = ">=3.13"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "graphviz>=0.20.3",
+    "importlib-metadata>=8.7.0",
+    "pydantic>=2.11.4",
+    "rich>=14.0.0",
+    "typer>=0.15.3",
+]
+
+[project.optional-dependencies]
+
+[dependency-groups]  # new standard, included by default
+dev = [
+    "build>=1.2.2.post1",
+    "bump-my-version>=0.28.1",
+    "coverage>=7.6.9",
+    "isort>=5.13.2",
+    "mypy>=1.13.0",
+    "pre-commit>=4.0.1",
+    "pytest>=8.3.4",
+    "pytest-cov>=6.0.0",
+    "pytest-mock>=3.14.0",
+    "ruff>=0.8.3",
+]
+
+[project.scripts]
+playbook = "playbook.infrastructure.cli:main"
+
+[project.urls]
+"Homepage" = "https://github.com/yourusername/playbook"
+"Bug Tracker" = "https://github.com/yourusername/playbook/issues"
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.uv]
+managed = true
+package = true
+
+[tool.bumpversion]
+current_version = "0.1.0"
+parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)"
+serialize = ["{major}.{minor}.{patch}"]
+search = "{current_version}"
+replace = "{new_version}"
+regex = false
+ignore_missing_version = false
+tag = true
+sign_tags = false
+tag_name = "v{new_version}"
+tag_message = "Bump version: {current_version} → {new_version}"
+allow_dirty = false
+commit = true
+message = "Bump version: {current_version} → {new_version}"
+commit_args = ""
+
+[tool.bumpversion.file_patterns]
+"**/*.py" = [
+    {search = "__version__ = '{current_version}'", replace = "__version__ = '{new_version}'"},
+]
+"VERSION" = [
+    { search = "{current_version}", replace = "{new_version}" },
+]
+"pyproject.toml" = [
+    { search = "version = \"{current_version}\"", replace = "version = \"{new_version}\"" },
+]
+[[tool.bumpversion.files]]
+filename = "src/twaws/__init__.py"
+[[tool.bumpversion.files]]
+filename = "VERSION"
+[[tool.bumpversion.files]]
+filename = "pyproject.toml"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.mypy]
+ignore_missing_imports = true
+namespace_packages = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+
+[tool.coverage.run]
+source = ["src/twaws"]
+omit = [
+    "tests/*",
+    "**/__main__.py",
+    "**/.venv/*",
+    "**/site-packages/*",
+    "examples/*",
+]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+fail_under = 70
+
+[tool.ruff]
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".ipynb_checkpoints",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pyenv",
+    ".pytest_cache",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    ".vscode",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "site-packages",
+    "venv",
+]
+line-length = 88
+indent-width = 4
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
+ignore = []
+fixable = ["ALL"]
+unfixable = []
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
