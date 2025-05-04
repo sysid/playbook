@@ -66,21 +66,21 @@ uninstall:  ## uv uninstall
 	-uv tool uninstall $(PACKAGE_NAME)
 
 .PHONY: bump-major
-bump-major:  ## bump-major, tag and push
+bump-major: check-github-token  ## bump-major, tag and push
 	bump-my-version bump --commit --tag major
 	git push
 	git push --tags
 	@$(MAKE) create-release
 
 .PHONY: bump-minor
-bump-minor:  ## bump-minor, tag and push
+bump-minor: check-github-token  ## bump-minor, tag and push
 	bump-my-version bump --commit --tag minor
 	git push
 	git push --tags
 	@$(MAKE) create-release
 
 .PHONY: bump-patch
-bump-patch:  ## bump-patch, tag and push
+bump-patch: check-github-token  ## bump-patch, tag and push
 	bump-my-version bump --commit --tag patch
 	git push
 	git push --tags
