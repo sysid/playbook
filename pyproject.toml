@@ -79,7 +79,7 @@ commit_args = ""
     { search = "version = \"{current_version}\"", replace = "version = \"{new_version}\"" },
 ]
 [[tool.bumpversion.files]]
-filename = "src/twaws/__init__.py"
+filename = "src/playbook/__init__.py"
 [[tool.bumpversion.files]]
 filename = "VERSION"
 [[tool.bumpversion.files]]
@@ -97,7 +97,7 @@ disallow_untyped_defs = true
 disallow_incomplete_defs = true
 
 [tool.coverage.run]
-source = ["src/twaws"]
+source = ["src/playbook"]
 omit = [
     "tests/*",
     "**/__main__.py",

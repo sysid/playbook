@@ -27,9 +27,13 @@ QUALITY: ## ############################################################
 .PHONY: lint
 lint: ruff mypy  ## Run all linters
 
+.PHONY: ruff-fix
+ruff-fix:  ## Run ruff and autofix
+	ruff check --fix $(pkg_src) $(tests_src)
+
 .PHONY: ruff
 ruff:  ## Run ruff
-	ruff $(pkg_src) $(tests_src)
+	ruff check $(pkg_src) $(tests_src)
 
 .PHONY: mypy
 mypy:  ## Run mypy
@@ -47,31 +51,18 @@ BUILDING: ## ############################################################
 build: clean format  ## Build package
 	python -m build
 
-.PHONY: clean
-clean: clean-build clean-pyc  ## Clean all build artifacts
-
-.PHONY: clean-build
-clean-build:
-	rm -fr build/
-	rm -fr dist/
-	rm -fr .eggs/
-	find . -name '*.egg-info' -exec rm -fr {} +
-	find . -name '*.egg' -exec rm -f {} +
-
-.PHONY: clean-pyc
-clean-pyc:
-	find . -name '*.pyc' -exec rm -f {} +
-	find . -name '*.pyo' -exec rm -f {} +
-	find . -name '*~' -exec rm -f {} +
-	find . -name '__pycache__' -exec rm -fr {} +
+.PHONY: publish
+publish:  ## publish
+	@echo "upload to Pypi"
+	twine upload --verbose dist/*
 
 .PHONY: install
-install: uninstall  ## pipx install
+install: uninstall  ## uv install
 	uv tool install -e .
 	playbook --install-completion bash
 
 .PHONY: uninstall
-uninstall:  ## pipx uninstall
+uninstall:  ## uv uninstall
 	-uv tool uninstall $(PACKAGE_NAME)
 
 .PHONY: bump-major
@@ -96,14 +87,44 @@ bump-patch:  ## bump-patch, tag and push
 	@$(MAKE) create-release
 
 .PHONY: create-release
-create-release:  ## create a release on GitHub via the gh cli
-	@if command -v gh version &>/dev/null; then \
+create-release: check-github-token  ## create a release on GitHub via the gh cli
+	@if ! command -v gh &>/dev/null; then \
+		echo "You do not have the GitHub CLI (gh) installed. Please create the release manually."; \
+		exit 1; \
+	else \
 		echo "Creating GitHub release for v$(VERSION)"; \
 		gh release create "v$(VERSION)" --generate-notes; \
-	else \
-		echo "You do not have the github-cli installed. Please create release from the repo manually."; \
+	fi
+
+.PHONY: check-github-token
+check-github-token:  ## Check if GITHUB_TOKEN is set
+	@if [ -z "$$GITHUB_TOKEN" ]; then \
+		echo "GITHUB_TOKEN is not set. Please export your GitHub token before running this command."; \
 		exit 1; \
 	fi
+	@echo "GITHUB_TOKEN is set"
+
+################################################################################
+# Clean \
+CLEAN:  ## ############################################################
+.PHONY: clean
+clean: clean-build clean-pyc  ## remove all build, test, coverage and Python artifacts
+
+.PHONY: clean-build
+clean-build: ## remove build artifacts
+	rm -fr build/
+	rm -fr dist/
+	rm -fr .eggs/
+	find . \( -path ./env -o -path ./venv -o -path ./.env -o -path ./.venv \) -prune -o -name '*.egg-info' -exec rm -fr {} +
+	find . \( -path ./env -o -path ./venv -o -path ./.env -o -path ./.venv \) -prune -o -name '*.egg' -exec rm -f {} +
+
+.PHONY: clean-pyc
+clean-pyc: ## remove Python file artifacts
+	find . -name '*.pyc' -exec rm -f {} +
+	find . -name '*.pyo' -exec rm -f {} +
+	find . -name '*~' -exec rm -f {} +
+	find . -name '__pycache__' -exec rm -fr {} +
+
 
 
 ################################################################################

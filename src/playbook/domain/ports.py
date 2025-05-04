@@ -118,7 +118,9 @@ class CommandOutputHandler(Protocol):
     """Interface for handling command output"""
 
     @abstractmethod
-    def handle_output(self, node_id: str, node_name: Optional[str], stdout: str, stderr: str) -> None:
+    def handle_output(
+        self, node_id: str, node_name: Optional[str], stdout: str, stderr: str
+    ) -> None:
         """Handle command output"""
         pass
 
@@ -126,14 +128,33 @@ class CommandOutputHandler(Protocol):
 class NodeIOHandler(Protocol):
     """Interface for handling node input/output"""
 
-    def handle_manual_prompt(self, node_id: str, node_name: Optional[str], prompt: str) -> bool:
+    def handle_manual_prompt(
+        self,
+        node_id: str,
+        node_name: Optional[str],
+        description: Optional[str],
+        prompt: str,
+    ) -> bool:
         """Handle manual node prompt, returns user decision (True/False)"""
         pass
 
-    def handle_command_output(self, node_id: str, node_name: Optional[str], stdout: str, stderr: str) -> None:
+    def handle_command_output(
+        self,
+        node_id: str,
+        node_name: Optional[str],
+        description: Optional[str],
+        stdout: str,
+        stderr: str,
+    ) -> None:
         """Handle command output"""
         pass
 
-    def handle_function_output(self, node_id: str, node_name: Optional[str], result: str) -> None:
+    def handle_function_output(
+        self,
+        node_id: str,
+        node_name: Optional[str],
+        description: Optional[str],
+        result: str,
+    ) -> None:
         """Handle function output"""
         pass

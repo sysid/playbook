@@ -1,13 +1,13 @@
 # src/playbook/config.py
-import os
 import tomllib  # Use tomllib from stdlib instead of tomli
 from pathlib import Path
 from typing import Dict, Any, Optional
 
 DEFAULT_CONFIG = {
     "default_timeout_seconds": 300,
-    "state_path": "~/.config/playbook/run.db"
+    "state_path": "~/.config/playbook/run.db",
 }
+
 
 def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
     """Load configuration from file, with fallbacks"""

@@ -19,10 +19,7 @@ class ShellProcessRunner(ProcessRunner):
         try:
             # Using subprocess.run with captured output
             result = subprocess.run(
-                shlex.split(command),
-                capture_output=True,
-                text=True,
-                timeout=timeout
+                shlex.split(command), capture_output=True, text=True, timeout=timeout
             )
 
             return result.returncode, result.stdout, result.stderr

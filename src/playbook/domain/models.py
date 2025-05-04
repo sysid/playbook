@@ -36,22 +36,25 @@ class BaseNode(BaseModel):
     id: str
     type: NodeType
     depends_on: List[str] = Field(default_factory=list)
-    repeatable: bool = False
     skippable: bool = False
     critical: bool = False
     name: Optional[str] = None
+    description: Optional[str] = None
     timeout: int = 300  # Default timeout in seconds
+    prompt: str = "Continue?"
+    confirm: bool = True
 
 
 class ManualNode(BaseNode):
     type: Literal[NodeType.MANUAL] = NodeType.MANUAL
-    prompt: str
 
 
 class FunctionNode(BaseNode):
     type: Literal[NodeType.FUNCTION] = NodeType.FUNCTION
     function_name: str
-    function_params: Dict[str, Union[str, int, float, bool]] = Field(default_factory=dict)
+    function_params: Dict[str, Union[str, int, float, bool]] = Field(
+        default_factory=dict
+    )
 
 
 class CommandNode(BaseNode):

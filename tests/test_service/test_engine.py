@@ -5,8 +5,14 @@ from unittest.mock import MagicMock
 import pytest
 
 from playbook.domain.models import (
-    NodeType, NodeStatus, RunStatus, TriggerType,
-    Runbook, RunInfo, NodeExecution, ManualNode
+    NodeType,
+    NodeStatus,
+    RunStatus,
+    TriggerType,
+    Runbook,
+    RunInfo,
+    NodeExecution,
+    ManualNode,
 )
 from playbook.service.engine import RunbookEngine
 
@@ -30,7 +36,7 @@ class TestRunbookEngine:
             "function_loader": function_loader,
             "run_repo": run_repo,
             "node_repo": node_repo,
-            "io_handler": io_handler
+            "io_handler": io_handler,
         }
 
     @pytest.fixture
@@ -42,7 +48,7 @@ class TestRunbookEngine:
             function_loader=mock_dependencies["function_loader"],
             run_repo=mock_dependencies["run_repo"],
             node_repo=mock_dependencies["node_repo"],
-            io_handler=mock_dependencies["io_handler"]
+            io_handler=mock_dependencies["io_handler"],
         )
 
     def test_has_cycles_whenNoCyclesExist_thenReturnsFalse(self, engine):
@@ -56,24 +62,15 @@ class TestRunbookEngine:
             created_at=datetime.now(timezone.utc),
             nodes={
                 "A": ManualNode(
-                    id="A",
-                    type=NodeType.MANUAL,
-                    prompt="Approve A?",
-                    depends_on=[]
+                    id="A", type=NodeType.MANUAL, prompt="Approve A?", depends_on=[]
                 ),
                 "B": ManualNode(
-                    id="B",
-                    type=NodeType.MANUAL,
-                    prompt="Approve B?",
-                    depends_on=["A"]
+                    id="B", type=NodeType.MANUAL, prompt="Approve B?", depends_on=["A"]
                 ),
                 "C": ManualNode(
-                    id="C",
-                    type=NodeType.MANUAL,
-                    prompt="Approve C?",
-                    depends_on=["B"]
-                )
-            }
+                    id="C", type=NodeType.MANUAL, prompt="Approve C?", depends_on=["B"]
+                ),
+            },
         )
 
         # Act
@@ -96,21 +93,15 @@ class TestRunbookEngine:
                     id="A",
                     type=NodeType.MANUAL,
                     prompt="Approve A?",
-                    depends_on=["C"]  # Creates a cycle
+                    depends_on=["C"],  # Creates a cycle
                 ),
                 "B": ManualNode(
-                    id="B",
-                    type=NodeType.MANUAL,
-                    prompt="Approve B?",
-                    depends_on=["A"]
+                    id="B", type=NodeType.MANUAL, prompt="Approve B?", depends_on=["A"]
                 ),
                 "C": ManualNode(
-                    id="C",
-                    type=NodeType.MANUAL,
-                    prompt="Approve C?",
-                    depends_on=["B"]
-                )
-            }
+                    id="C", type=NodeType.MANUAL, prompt="Approve C?", depends_on=["B"]
+                ),
+            },
         )
 
         # Act
@@ -133,9 +124,9 @@ class TestRunbookEngine:
                     id="A",
                     type=NodeType.MANUAL,
                     prompt="Approve A?",
-                    depends_on=["A"]  # Self-loop
+                    depends_on=["A"],  # Self-loop
                 )
-            }
+            },
         )
 
         # Act
@@ -158,9 +149,9 @@ class TestRunbookEngine:
                     id="A",
                     type=NodeType.MANUAL,
                     prompt="Approve A?",
-                    depends_on=["Z"]  # Z doesn't exist
+                    depends_on=["Z"],  # Z doesn't exist
                 )
-            }
+            },
         )
 
         # Act & Assert
@@ -178,24 +169,15 @@ class TestRunbookEngine:
             created_at=datetime.now(timezone.utc),
             nodes={
                 "A": ManualNode(
-                    id="A",
-                    type=NodeType.MANUAL,
-                    prompt="Approve A?",
-                    depends_on=[]
+                    id="A", type=NodeType.MANUAL, prompt="Approve A?", depends_on=[]
                 ),
                 "B": ManualNode(
-                    id="B",
-                    type=NodeType.MANUAL,
-                    prompt="Approve B?",
-                    depends_on=["A"]
+                    id="B", type=NodeType.MANUAL, prompt="Approve B?", depends_on=["A"]
                 ),
                 "C": ManualNode(
-                    id="C",
-                    type=NodeType.MANUAL,
-                    prompt="Approve C?",
-                    depends_on=["B"]
-                )
-            }
+                    id="C", type=NodeType.MANUAL, prompt="Approve C?", depends_on=["B"]
+                ),
+            },
         )
 
         # Act
@@ -204,7 +186,9 @@ class TestRunbookEngine:
         # Assert
         assert result == ["A", "B", "C"]
 
-    def test_get_execution_order_whenDiamondPattern_thenRespectsDependencies(self, engine):
+    def test_get_execution_order_whenDiamondPattern_thenRespectsDependencies(
+        self, engine
+    ):
         """Test execution order for diamond pattern: A -> B, A -> C, B -> D, C -> D"""
         # Arrange
         runbook = Runbook(
@@ -215,30 +199,21 @@ class TestRunbookEngine:
             created_at=datetime.now(timezone.utc),
             nodes={
                 "A": ManualNode(
-                    id="A",
-                    type=NodeType.MANUAL,
-                    prompt="Approve A?",
-                    depends_on=[]
+                    id="A", type=NodeType.MANUAL, prompt="Approve A?", depends_on=[]
                 ),
                 "B": ManualNode(
-                    id="B",
-                    type=NodeType.MANUAL,
-                    prompt="Approve B?",
-                    depends_on=["A"]
+                    id="B", type=NodeType.MANUAL, prompt="Approve B?", depends_on=["A"]
                 ),
                 "C": ManualNode(
-                    id="C",
-                    type=NodeType.MANUAL,
-                    prompt="Approve C?",
-                    depends_on=["A"]
+                    id="C", type=NodeType.MANUAL, prompt="Approve C?", depends_on=["A"]
                 ),
                 "D": ManualNode(
                     id="D",
                     type=NodeType.MANUAL,
                     prompt="Approve D?",
-                    depends_on=["B", "C"]
-                )
-            }
+                    depends_on=["B", "C"],
+                ),
+            },
         )
 
         # Act
@@ -262,42 +237,30 @@ class TestRunbookEngine:
             created_at=datetime.now(timezone.utc),
             nodes={
                 "A": ManualNode(
-                    id="A",
-                    type=NodeType.MANUAL,
-                    prompt="Approve A?",
-                    depends_on=[]
+                    id="A", type=NodeType.MANUAL, prompt="Approve A?", depends_on=[]
                 ),
                 "B": ManualNode(
-                    id="B",
-                    type=NodeType.MANUAL,
-                    prompt="Approve B?",
-                    depends_on=["A"]
+                    id="B", type=NodeType.MANUAL, prompt="Approve B?", depends_on=["A"]
                 ),
                 "C": ManualNode(
-                    id="C",
-                    type=NodeType.MANUAL,
-                    prompt="Approve C?",
-                    depends_on=["A"]
+                    id="C", type=NodeType.MANUAL, prompt="Approve C?", depends_on=["A"]
                 ),
                 "D": ManualNode(
                     id="D",
                     type=NodeType.MANUAL,
                     prompt="Approve D?",
-                    depends_on=["B", "C"]
+                    depends_on=["B", "C"],
                 ),
                 "E": ManualNode(
-                    id="E",
-                    type=NodeType.MANUAL,
-                    prompt="Approve E?",
-                    depends_on=["B"]
+                    id="E", type=NodeType.MANUAL, prompt="Approve E?", depends_on=["B"]
                 ),
                 "F": ManualNode(
                     id="F",
                     type=NodeType.MANUAL,
                     prompt="Approve F?",
-                    depends_on=["C", "E"]
-                )
-            }
+                    depends_on=["C", "E"],
+                ),
+            },
         )
 
         # Act
@@ -326,22 +289,21 @@ class TestRunbookEngine:
                     id="A",
                     type=NodeType.MANUAL,
                     prompt="Approve A?",
-                    depends_on=["B"]  # Creates a cycle
+                    depends_on=["B"],  # Creates a cycle
                 ),
                 "B": ManualNode(
-                    id="B",
-                    type=NodeType.MANUAL,
-                    prompt="Approve B?",
-                    depends_on=["A"]
-                )
-            }
+                    id="B", type=NodeType.MANUAL, prompt="Approve B?", depends_on=["A"]
+                ),
+            },
         )
 
         # Act & Assert
         with pytest.raises(ValueError, match="Cycle detected"):
             engine._get_execution_order(runbook)
 
-    def test_get_execution_order_whenNonExistentDependency_thenRaisesKeyError(self, engine):
+    def test_get_execution_order_whenNonExistentDependency_thenRaisesKeyError(
+        self, engine
+    ):
         """Test that _get_execution_order raises KeyError for non-existent dependencies"""
         # Arrange - Create a workflow with non-existent dependency
         runbook = Runbook(
@@ -355,9 +317,9 @@ class TestRunbookEngine:
                     id="A",
                     type=NodeType.MANUAL,
                     prompt="Approve A?",
-                    depends_on=["Z"]  # Z doesn't exist
+                    depends_on=["Z"],  # Z doesn't exist
                 )
-            }
+            },
         )
 
         # Act & Assert
@@ -375,18 +337,12 @@ class TestRunbookEngine:
             created_at=datetime.now(timezone.utc),
             nodes={
                 "A": ManualNode(
-                    id="A",
-                    type=NodeType.MANUAL,
-                    prompt="Approve A?",
-                    depends_on=[]
+                    id="A", type=NodeType.MANUAL, prompt="Approve A?", depends_on=[]
                 ),
                 "B": ManualNode(
-                    id="B",
-                    type=NodeType.MANUAL,
-                    prompt="Approve B?",
-                    depends_on=["A"]
-                )
-            }
+                    id="B", type=NodeType.MANUAL, prompt="Approve B?", depends_on=["A"]
+                ),
+            },
         )
 
         # Act
@@ -406,18 +362,12 @@ class TestRunbookEngine:
             created_at=datetime.now(timezone.utc),
             nodes={
                 "A": ManualNode(
-                    id="A",
-                    type=NodeType.MANUAL,
-                    prompt="Approve A?",
-                    depends_on=["B"]
+                    id="A", type=NodeType.MANUAL, prompt="Approve A?", depends_on=["B"]
                 ),
                 "B": ManualNode(
-                    id="B",
-                    type=NodeType.MANUAL,
-                    prompt="Approve B?",
-                    depends_on=["A"]
-                )
-            }
+                    id="B", type=NodeType.MANUAL, prompt="Approve B?", depends_on=["A"]
+                ),
+            },
         )
 
         # Act
@@ -438,18 +388,15 @@ class TestRunbookEngine:
             created_at=datetime.now(timezone.utc),
             nodes={
                 "A": ManualNode(
-                    id="A",
-                    type=NodeType.MANUAL,
-                    prompt="Approve A?",
-                    depends_on=[]
+                    id="A", type=NodeType.MANUAL, prompt="Approve A?", depends_on=[]
                 ),
                 "B": ManualNode(
                     id="B",
                     type=NodeType.MANUAL,
                     prompt="Approve B?",
-                    depends_on=["Z"]  # Z doesn't exist
-                )
-            }
+                    depends_on=["Z"],  # Z doesn't exist
+                ),
+            },
         )
 
         # Act
@@ -473,12 +420,9 @@ class TestRunbookEngine:
             created_at=datetime.now(timezone.utc),
             nodes={
                 "A": ManualNode(
-                    id="A",
-                    type=NodeType.MANUAL,
-                    prompt="Approve A?",
-                    depends_on=[]
+                    id="A", type=NodeType.MANUAL, prompt="Approve A?", depends_on=[]
                 )
-            }
+            },
         )
 
         # Act
@@ -503,25 +447,21 @@ class TestRunbookEngine:
             created_at=datetime.now(timezone.utc),
             nodes={
                 "A": ManualNode(
-                    id="A",
-                    type=NodeType.MANUAL,
-                    prompt="Approve A?",
-                    depends_on=["B"]
+                    id="A", type=NodeType.MANUAL, prompt="Approve A?", depends_on=["B"]
                 ),
                 "B": ManualNode(
-                    id="B",
-                    type=NodeType.MANUAL,
-                    prompt="Approve B?",
-                    depends_on=["A"]
-                )
-            }
+                    id="B", type=NodeType.MANUAL, prompt="Approve B?", depends_on=["A"]
+                ),
+            },
         )
 
         # Act & Assert
         with pytest.raises(ValueError, match="validation failed"):
             engine.start_run(runbook)
 
-    def test_update_run_status_whenAllNodesOK_thenRunStatusOK(self, engine, mock_dependencies):
+    def test_update_run_status_whenAllNodesOK_thenRunStatusOK(
+        self, engine, mock_dependencies
+    ):
         """Test that update_run_status sets OK status when all nodes are OK"""
         # Arrange
         runbook = Runbook(
@@ -532,18 +472,12 @@ class TestRunbookEngine:
             created_at=datetime.now(timezone.utc),
             nodes={
                 "A": ManualNode(
-                    id="A",
-                    type=NodeType.MANUAL,
-                    prompt="Approve A?",
-                    depends_on=[]
+                    id="A", type=NodeType.MANUAL, prompt="Approve A?", depends_on=[]
                 ),
                 "B": ManualNode(
-                    id="B",
-                    type=NodeType.MANUAL,
-                    prompt="Approve B?",
-                    depends_on=["A"]
-                )
-            }
+                    id="B", type=NodeType.MANUAL, prompt="Approve B?", depends_on=["A"]
+                ),
+            },
         )
 
         run_info = RunInfo(
@@ -551,7 +485,7 @@ class TestRunbookEngine:
             run_id=123,
             start_time=datetime.now(timezone.utc),
             status=RunStatus.RUNNING,
-            trigger=TriggerType.RUN
+            trigger=TriggerType.RUN,
         )
 
         # Two successful node executions
@@ -562,7 +496,7 @@ class TestRunbookEngine:
                 node_id="A",
                 attempt=1,
                 start_time=datetime.now(timezone.utc),
-                status=NodeStatus.OK
+                status=NodeStatus.OK,
             ),
             NodeExecution(
                 workflow_name="Test Workflow",
@@ -570,8 +504,8 @@ class TestRunbookEngine:
                 node_id="B",
                 attempt=1,
                 start_time=datetime.now(timezone.utc),
-                status=NodeStatus.OK
-            )
+                status=NodeStatus.OK,
+            ),
         ]
 
         # Act
@@ -583,9 +517,12 @@ class TestRunbookEngine:
         assert run_info.nodes_ok == 2
         assert run_info.nodes_nok == 0
         assert run_info.end_time is not None
-        mock_dependencies["run_repo"].update_run.assert_called_once()
+        # Check that update_run was called exactly twice
+        assert mock_dependencies["run_repo"].update_run.call_count == 2
 
-    def test_update_run_status_whenCriticalNodeFails_thenRunStatusNOK(self, engine, mock_dependencies):
+    def test_update_run_status_whenCriticalNodeFails_thenRunStatusNOK(
+        self, engine, mock_dependencies
+    ):
         """Test that update_run_status sets NOK status when a critical node fails"""
         # Arrange
         runbook = Runbook(
@@ -600,15 +537,12 @@ class TestRunbookEngine:
                     type=NodeType.MANUAL,
                     prompt="Approve A?",
                     depends_on=[],
-                    critical=True  # Critical node
+                    critical=True,  # Critical node
                 ),
                 "B": ManualNode(
-                    id="B",
-                    type=NodeType.MANUAL,
-                    prompt="Approve B?",
-                    depends_on=["A"]
-                )
-            }
+                    id="B", type=NodeType.MANUAL, prompt="Approve B?", depends_on=["A"]
+                ),
+            },
         )
 
         run_info = RunInfo(
@@ -616,7 +550,7 @@ class TestRunbookEngine:
             run_id=123,
             start_time=datetime.now(timezone.utc),
             status=RunStatus.RUNNING,
-            trigger=TriggerType.RUN
+            trigger=TriggerType.RUN,
         )
 
         # Node A fails (critical node)
@@ -627,7 +561,7 @@ class TestRunbookEngine:
                 node_id="A",
                 attempt=1,
                 start_time=datetime.now(timezone.utc),
-                status=NodeStatus.NOK  # Failed node
+                status=NodeStatus.NOK,  # Failed node
             )
         ]
 
@@ -640,9 +574,12 @@ class TestRunbookEngine:
         assert run_info.nodes_ok == 0
         assert run_info.nodes_nok == 1
         assert run_info.end_time is not None
-        mock_dependencies["run_repo"].update_run.assert_called_once()
+        # Check that update_run was called exactly twice
+        assert mock_dependencies["run_repo"].update_run.call_count == 2
 
-    def test_update_run_status_whenNonCriticalNodeFails_thenContinuesRunning(self, engine, mock_dependencies):
+    def test_update_run_status_whenNonCriticalNodeFails_thenContinuesRunning(
+        self, engine, mock_dependencies
+    ):
         """Test that update_run_status allows run to continue when non-critical nodes fail"""
         # Arrange
         runbook = Runbook(
@@ -657,15 +594,12 @@ class TestRunbookEngine:
                     type=NodeType.MANUAL,
                     prompt="Approve A?",
                     depends_on=[],
-                    critical=False  # Non-critical node
+                    critical=False,  # Non-critical node
                 ),
                 "B": ManualNode(
-                    id="B",
-                    type=NodeType.MANUAL,
-                    prompt="Approve B?",
-                    depends_on=["A"]
-                )
-            }
+                    id="B", type=NodeType.MANUAL, prompt="Approve B?", depends_on=["A"]
+                ),
+            },
         )
 
         run_info = RunInfo(
@@ -673,7 +607,7 @@ class TestRunbookEngine:
             run_id=123,
             start_time=datetime.now(timezone.utc),
             status=RunStatus.RUNNING,
-            trigger=TriggerType.RUN
+            trigger=TriggerType.RUN,
         )
 
         # Node A fails (non-critical node), B not yet executed
@@ -684,7 +618,7 @@ class TestRunbookEngine:
                 node_id="A",
                 attempt=1,
                 start_time=datetime.now(timezone.utc),
-                status=NodeStatus.NOK  # Failed node
+                status=NodeStatus.NOK,  # Failed node
             )
         ]
 
@@ -708,7 +642,7 @@ class TestRunbookEngine:
             status=RunStatus.ABORTED,  # Previous run was aborted
             trigger=TriggerType.RUN,
             nodes_ok=1,
-            nodes_nok=1
+            nodes_nok=1,
         )
 
         mock_dependencies["run_repo"].get_run.return_value = existing_run
@@ -721,18 +655,12 @@ class TestRunbookEngine:
             created_at=datetime.now(timezone.utc),
             nodes={
                 "A": ManualNode(
-                    id="A",
-                    type=NodeType.MANUAL,
-                    prompt="Approve A?",
-                    depends_on=[]
+                    id="A", type=NodeType.MANUAL, prompt="Approve A?", depends_on=[]
                 ),
                 "B": ManualNode(
-                    id="B",
-                    type=NodeType.MANUAL,
-                    prompt="Approve B?",
-                    depends_on=["A"]
-                )
-            }
+                    id="B", type=NodeType.MANUAL, prompt="Approve B?", depends_on=["A"]
+                ),
+            },
         )
 
         # Act
@@ -743,10 +671,14 @@ class TestRunbookEngine:
         assert resumed_run.run_id == 123
         assert resumed_run.status == RunStatus.RUNNING
         assert resumed_run.trigger == TriggerType.RESUME
-        mock_dependencies["run_repo"].get_run.assert_called_once_with("Test Workflow", 123)
+        mock_dependencies["run_repo"].get_run.assert_called_once_with(
+            "Test Workflow", 123
+        )
         mock_dependencies["run_repo"].update_run.assert_called_once()
 
-    def test_resume_run_whenRunStatusNotResumable_thenRaisesValueError(self, engine, mock_dependencies):
+    def test_resume_run_whenRunStatusNotResumable_thenRaisesValueError(
+        self, engine, mock_dependencies
+    ):
         """Test that resume_run validates run status before resuming"""
         # Arrange
         existing_run = RunInfo(
@@ -754,7 +686,7 @@ class TestRunbookEngine:
             run_id=123,
             start_time=datetime.now(timezone.utc),
             status=RunStatus.OK,  # Completed run - can't resume
-            trigger=TriggerType.RUN
+            trigger=TriggerType.RUN,
         )
 
         mock_dependencies["run_repo"].get_run.return_value = existing_run
@@ -765,14 +697,16 @@ class TestRunbookEngine:
             version="1.0",
             author="Test Author",
             created_at=datetime.now(timezone.utc),
-            nodes={}
+            nodes={},
         )
 
         # Act & Assert
         with pytest.raises(ValueError, match="Cannot resume run with status"):
             engine.resume_run(runbook, 123)
 
-    def test_resume_node_execution_whenManualNode_thenExecutesManualNode(self, engine, mock_dependencies):
+    def test_resume_node_execution_whenManualNode_thenExecutesManualNode(
+        self, engine, mock_dependencies
+    ):
         """Test that resume_node_execution correctly handles manual nodes"""
         # Arrange
         runbook = Runbook(
@@ -786,9 +720,9 @@ class TestRunbookEngine:
                     id="manual_node",
                     type=NodeType.MANUAL,
                     prompt="Approve?",
-                    depends_on=[]
+                    depends_on=[],
                 )
-            }
+            },
         )
 
         run_info = RunInfo(
@@ -796,7 +730,7 @@ class TestRunbookEngine:
             run_id=123,
             start_time=datetime.now(timezone.utc),
             status=RunStatus.RUNNING,
-            trigger=TriggerType.RESUME
+            trigger=TriggerType.RESUME,
         )
 
         existing_execution = NodeExecution(
@@ -805,7 +739,7 @@ class TestRunbookEngine:
             node_id="manual_node",
             attempt=1,
             start_time=datetime.now(timezone.utc),
-            status=NodeStatus.PENDING
+            status=NodeStatus.PENDING,
         )
 
         # Mock the IO handler to approve the manual node
@@ -824,7 +758,9 @@ class TestRunbookEngine:
         mock_dependencies["node_repo"].update_execution.assert_called()
         mock_dependencies["io_handler"].handle_manual_prompt.assert_called_once()
 
-    def test_resume_node_execution_whenFunctionNode_thenExecutesFunction(self, engine, mock_dependencies):
+    def test_resume_node_execution_whenFunctionNode_thenExecutesFunction(
+        self, engine, mock_dependencies
+    ):
         """Test that resume_node_execution correctly handles function nodes"""
         # Arrange - Create a function node
         from playbook.domain.models import FunctionNode
@@ -841,9 +777,9 @@ class TestRunbookEngine:
                     type=NodeType.FUNCTION,
                     function_name="test_function",
                     function_params={"param1": "value1"},
-                    depends_on=[]
+                    depends_on=[],
                 )
-            }
+            },
         )
 
         run_info = RunInfo(
@@ -851,7 +787,7 @@ class TestRunbookEngine:
             run_id=123,
             start_time=datetime.now(timezone.utc),
             status=RunStatus.RUNNING,
-            trigger=TriggerType.RESUME
+            trigger=TriggerType.RESUME,
         )
 
         existing_execution = NodeExecution(
@@ -860,11 +796,13 @@ class TestRunbookEngine:
             node_id="func_node",
             attempt=1,
             start_time=datetime.now(timezone.utc),
-            status=NodeStatus.RUNNING
+            status=NodeStatus.RUNNING,
         )
 
         # Mock function loader to return a result
-        mock_dependencies["function_loader"].load_and_call.return_value = "Function result"
+        mock_dependencies[
+            "function_loader"
+        ].load_and_call.return_value = "Function result"
 
         # Act
         status, updated_execution = engine.resume_node_execution(
@@ -881,7 +819,9 @@ class TestRunbookEngine:
             "test_function", {"param1": "value1"}
         )
 
-    def test_resume_node_execution_whenCommandNode_thenExecutesCommand(self, engine, mock_dependencies):
+    def test_resume_node_execution_whenCommandNode_thenExecutesCommand(
+        self, engine, mock_dependencies
+    ):
         """Test that resume_node_execution correctly handles command nodes"""
         # Arrange - Create a command node
         from playbook.domain.models import CommandNode
@@ -897,9 +837,9 @@ class TestRunbookEngine:
                     id="cmd_node",
                     type=NodeType.COMMAND,
                     command_name="echo test",
-                    depends_on=[]
+                    depends_on=[],
                 )
-            }
+            },
         )
 
         run_info = RunInfo(
@@ -907,7 +847,7 @@ class TestRunbookEngine:
             run_id=123,
             start_time=datetime.now(timezone.utc),
             status=RunStatus.RUNNING,
-            trigger=TriggerType.RESUME
+            trigger=TriggerType.RESUME,
         )
 
         existing_execution = NodeExecution(
@@ -916,11 +856,15 @@ class TestRunbookEngine:
             node_id="cmd_node",
             attempt=1,
             start_time=datetime.now(timezone.utc),
-            status=NodeStatus.RUNNING
+            status=NodeStatus.RUNNING,
         )
 
         # Mock process runner
-        mock_dependencies["process_runner"].run_command.return_value = (0, "Command output", "")
+        mock_dependencies["process_runner"].run_command.return_value = (
+            0,
+            "Command output",
+            "",
+        )
 
         # Act
         status, updated_execution = engine.resume_node_execution(
@@ -936,7 +880,9 @@ class TestRunbookEngine:
         mock_dependencies["node_repo"].update_execution.assert_called()
         mock_dependencies["process_runner"].run_command.assert_called_once()
 
-    def test_resume_node_execution_whenFunctionRaisesException_thenNodeNOK(self, engine, mock_dependencies):
+    def test_resume_node_execution_whenFunctionRaisesException_thenNodeNOK(
+        self, engine, mock_dependencies
+    ):
         """Test that resume_node_execution handles exceptions during execution"""
         # Arrange - Create a function node
         from playbook.domain.models import FunctionNode
@@ -953,9 +899,9 @@ class TestRunbookEngine:
                     type=NodeType.FUNCTION,
                     function_name="test_function",
                     function_params={"param1": "value1"},
-                    depends_on=[]
+                    depends_on=[],
                 )
-            }
+            },
         )
 
         run_info = RunInfo(
@@ -963,7 +909,7 @@ class TestRunbookEngine:
             run_id=123,
             start_time=datetime.now(timezone.utc),
             status=RunStatus.RUNNING,
-            trigger=TriggerType.RESUME
+            trigger=TriggerType.RESUME,
         )
 
         existing_execution = NodeExecution(
@@ -972,7 +918,7 @@ class TestRunbookEngine:
             node_id="func_node",
             attempt=1,
             start_time=datetime.now(timezone.utc),
-            status=NodeStatus.RUNNING
+            status=NodeStatus.RUNNING,
         )
 
         # Mock function loader to raise an exception
@@ -991,7 +937,9 @@ class TestRunbookEngine:
         assert updated_execution.end_time is not None
         mock_dependencies["node_repo"].update_execution.assert_called()
 
-    def test_execute_node_with_existing_record_whenSuccessful_thenUpdatesExecution(self, engine, mock_dependencies):
+    def test_execute_node_with_existing_record_whenSuccessful_thenUpdatesExecution(
+        self, engine, mock_dependencies
+    ):
         """Test that execute_node_with_existing_record updates execution records"""
         # Arrange
         from playbook.domain.models import FunctionNode
@@ -1008,9 +956,9 @@ class TestRunbookEngine:
                     type=NodeType.FUNCTION,
                     function_name="test_function",
                     function_params={"param1": "value1"},
-                    depends_on=[]
+                    depends_on=[],
                 )
-            }
+            },
         )
 
         run_info = RunInfo(
@@ -1018,15 +966,20 @@ class TestRunbookEngine:
             run_id=123,
             start_time=datetime.now(timezone.utc),
             status=RunStatus.RUNNING,
-            trigger=TriggerType.RESUME
+            trigger=TriggerType.RESUME,
         )
 
         # Mock function loader to return a result
-        mock_dependencies["function_loader"].load_and_call.return_value = "Function result"
+        mock_dependencies[
+            "function_loader"
+        ].load_and_call.return_value = "Function result"
 
         # Act
         status, execution = engine.execute_node_with_existing_record(
-            runbook, "func_node", run_info, 2  # attempt 2
+            runbook,
+            "func_node",
+            run_info,
+            2,  # attempt 2
         )
 
         # Assert
@@ -1038,7 +991,9 @@ class TestRunbookEngine:
         mock_dependencies["node_repo"].update_execution.assert_called_once()
         mock_dependencies["function_loader"].load_and_call.assert_called_once()
 
-    def test_execute_node_with_existing_record_whenException_thenHandlesError(self, engine, mock_dependencies):
+    def test_execute_node_with_existing_record_whenException_thenHandlesError(
+        self, engine, mock_dependencies
+    ):
         """Test that execute_node_with_existing_record handles exceptions"""
         # Arrange
         from playbook.domain.models import FunctionNode
@@ -1055,9 +1010,9 @@ class TestRunbookEngine:
                     type=NodeType.FUNCTION,
                     function_name="test_function",
                     function_params={"param1": "value1"},
-                    depends_on=[]
+                    depends_on=[],
                 )
-            }
+            },
         )
 
         run_info = RunInfo(
@@ -1065,7 +1020,7 @@ class TestRunbookEngine:
             run_id=123,
             start_time=datetime.now(timezone.utc),
             status=RunStatus.RUNNING,
-            trigger=TriggerType.RESUME
+            trigger=TriggerType.RESUME,
         )
 
         # Mock function loader to raise an exception
@@ -1074,7 +1029,10 @@ class TestRunbookEngine:
 
         # Act
         status, execution = engine.execute_node_with_existing_record(
-            runbook, "func_node", run_info, 2  # attempt 2
+            runbook,
+            "func_node",
+            run_info,
+            2,  # attempt 2
         )
 
         # Assert

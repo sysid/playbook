@@ -2,11 +2,9 @@
 import tomllib  # Use tomllib instead of tomli
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, Union
+from typing import Dict, Union
 
-from ..domain.models import (
-    Runbook, NodeType, ManualNode, FunctionNode, CommandNode
-)
+from ..domain.models import Runbook, NodeType, ManualNode, FunctionNode, CommandNode
 
 
 class RunbookParser:
@@ -68,7 +66,7 @@ class RunbookParser:
             version=metadata["version"],
             author=metadata["author"],
             created_at=datetime.fromisoformat(metadata["created_at"]),
-            nodes=nodes
+            nodes=nodes,
         )
 
     def save(self, runbook: Runbook, file_path: str) -> None:

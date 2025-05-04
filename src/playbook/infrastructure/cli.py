@@ -3,7 +3,7 @@ import datetime
 import logging
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 
 import typer
 from rich.console import Console
@@ -15,11 +15,21 @@ from rich.table import Table
 from playbook.infrastructure.statistics import SQLiteStatisticsRepository
 from playbook.service.statistics import StatisticsService
 from ..config import load_config
-from ..domain.models import NodeStatus, NodeType, RunStatus
+from ..domain.models import (
+    NodeStatus,
+    NodeType,
+    RunStatus,
+    Runbook,
+    RunInfo,
+    TriggerType,
+)
 from ..domain.ports import Clock, NodeIOHandler
 from ..infrastructure.functions import PythonFunctionLoader
 from ..infrastructure.parser import RunbookParser
-from ..infrastructure.persistence import SQLiteRunRepository, SQLiteNodeExecutionRepository
+from ..infrastructure.persistence import (
+    SQLiteRunRepository,
+    SQLiteNodeExecutionRepository,
+)
 from ..infrastructure.process import ShellProcessRunner
 from ..infrastructure.visualization import GraphvizVisualizer
 from ..service.engine import RunbookEngine
@@ -30,7 +40,7 @@ logger = logging.getLogger(__name__)
 app = typer.Typer(
     name="playbook",
     help="Playbook - A workflow engine for operations",
-    add_completion=False
+    add_completion=False,
 )
 
 # Rich console for pretty output
@@ -50,79 +60,105 @@ class ConsoleNodeIOHandler(NodeIOHandler):
 
     def __init__(self, console: Console, progress: Optional[Progress] = None):
         self.console = console
-        self.progress = progress
+        self.displayed_descriptions = set()  # Track which nodes have shown descriptions
+        self.current_node_id = None  # Track which node is currently executing
 
-    def handle_manual_prompt(self, node_id: str, node_name: Optional[str], prompt: str) -> bool:
+    def set_current_node(self, node_id: str):
+        """Set the current node being processed"""
+        self.current_node_id = node_id
+
+    def handle_manual_prompt(
+        self,
+        node_id: str,
+        node_name: Optional[str],
+        description: Optional[str],
+        prompt: str,
+    ) -> bool:
         """Display prompt and get user decision"""
         display_name = node_name or node_id
 
-        # Pause progress bar if it exists
-        if self.progress:
-            self.progress.stop()
-
-        # Show prompt and get decision
         self.console.print(f"[bold blue]Manual Step ({display_name}):[/bold blue]")
+
+        # Print description if available and not already shown
+        node_key = f"{node_id}-description"
+        if description and node_key not in self.displayed_descriptions:
+            self.console.print(f"\n[italic]{description}[/italic]\n")
+            self.displayed_descriptions.add(node_key)
+
         self.console.print(prompt)
 
         from rich.prompt import Confirm
+
         decision = Confirm.ask("Approve?")
 
         self.console.print("")
-        # Resume progress bar if it exists
-        if self.progress:
-            self.progress.start()
-
         return decision
 
-    def handle_command_output(self, node_id: str, node_name: Optional[str], stdout: str, stderr: str) -> None:
+    def handle_command_output(
+        self,
+        node_id: str,
+        node_name: Optional[str],
+        description: Optional[str],
+        stdout: str,
+        stderr: str,
+    ) -> None:
         """Display command output"""
         display_name = node_name or node_id
+        node_key = f"{node_id}-description"
 
         # Only process if there's output to show
         if not (stdout.strip() or stderr.strip()):
             return
 
-        # Pause progress bar if it exists
-        if self.progress:
-            self.progress.stop()
+        # Print description if available and not already shown
+        if description and node_key not in self.displayed_descriptions:
+            self.console.print(f"\n[italic]{description}[/italic]\n")
+            self.displayed_descriptions.add(node_key)
 
-        # Show output
         if stdout.strip():
-            self.console.print(f"[bold green]Command Output ({display_name}):[/bold green]")
+            self.console.print(
+                f"[bold green]Command Output ({display_name}):[/bold green]"
+            )
             self.console.print(stdout)
 
         if stderr.strip():
-            self.console.print(f"[bold yellow]Command Error ({display_name}):[/bold yellow]")
+            self.console.print(
+                f"[bold yellow]Command Error ({display_name}):[/bold yellow]"
+            )
             self.console.print(stderr)
 
         self.console.print("")
-        # Resume progress bar if it exists
-        if self.progress:
-            self.progress.start()
 
-    def handle_function_output(self, node_id: str, node_name: Optional[str], result: str) -> None:
+    def handle_function_output(
+        self,
+        node_id: str,
+        node_name: Optional[str],
+        description: Optional[str],
+        result: str,
+    ) -> None:
         """Display function output"""
         display_name = node_name or node_id
+        node_key = f"{node_id}-description"
 
         # Only process if there's output to show
         if not result.strip():
             return
 
-        # Pause progress bar if it exists
-        if self.progress:
-            self.progress.stop()
+        # Print description if available and not already shown
+        if description and node_key not in self.displayed_descriptions:
+            self.console.print(f"\n[italic]{description}[/italic]\n")
+            self.displayed_descriptions.add(node_key)
 
         # Show output
         self.console.print(f"[bold blue]Function Output ({display_name}):[/bold blue]")
         self.console.print(result)
 
         self.console.print("")
-        # Resume progress bar if it exists
-        if self.progress:
-            self.progress.start()
 
 
-def get_engine(state_path: Optional[str] = None, io_handler: Optional[NodeIOHandler] = None) -> RunbookEngine:
+def get_engine(
+    state_path: Optional[str] = None, io_handler: Optional[NodeIOHandler] = None
+) -> RunbookEngine:
     """Create and configure the runbook engine"""
     # Load configuration
     config = load_config()
@@ -147,7 +183,7 @@ def get_engine(state_path: Optional[str] = None, io_handler: Optional[NodeIOHand
         function_loader=function_loader,
         run_repo=run_repo,
         node_repo=node_repo,
-        io_handler=io_handler
+        io_handler=io_handler,
     )
 
 
@@ -156,7 +192,7 @@ def create(
     title: str = typer.Option(..., "--title", help="Runbook title"),
     author: str = typer.Option(..., "--author", help="Author name"),
     description: str = typer.Option(None, "--description", help="Runbook description"),
-    output: Optional[Path] = typer.Option(None, "--output", help="Output file path")
+    output: Optional[Path] = typer.Option(None, "--output", help="Output file path"),
 ):
     """Create a new empty runbook file"""
     # Set default description if none provided
@@ -187,6 +223,8 @@ created_at  = "{now.isoformat()}"
 # [approve]
 # type        = "Manual"
 # prompt      = "Proceed with deployment?"
+# description   = \"\"\"This step requires manual approval before proceeding.
+# Please review the changes and confirm.\"\"\"
 # depends_on  = []
 # skippable   = false
 # critical    = true
@@ -195,6 +233,7 @@ created_at  = "{now.isoformat()}"
 # [build]
 # type         = "Command"
 # command_name = "echo 'Hello, World!'"
+# description  = "Builds the project artifacts"
 # depends_on   = []
 # timeout      = 300
 # name         = "Build step"
@@ -204,6 +243,7 @@ created_at  = "{now.isoformat()}"
 # type           = "Function"
 # function_name  = "playbook.functions.notify"
 # function_params = {{ "message" = "Deployment complete" }}
+# description    = "Sends deployment completion notification"
 # depends_on     = []
 """
 
@@ -218,7 +258,7 @@ created_at  = "{now.isoformat()}"
 @app.command()
 def validate(
     file: Path = typer.Argument(..., help="Runbook file path"),
-    strict: bool = typer.Option(False, "--strict", help="Enable strict validation")
+    strict: bool = typer.Option(False, "--strict", help="Enable strict validation"),
 ):
     """Validate a runbook file"""
     parser = RunbookParser()
@@ -250,9 +290,15 @@ def validate(
             console.print(f"Nodes: {len(runbook.nodes)}")
 
             # Print node types
-            manual_count = sum(1 for n in runbook.nodes.values() if n.type == NodeType.MANUAL)
-            function_count = sum(1 for n in runbook.nodes.values() if n.type == NodeType.FUNCTION)
-            command_count = sum(1 for n in runbook.nodes.values() if n.type == NodeType.COMMAND)
+            manual_count = sum(
+                1 for n in runbook.nodes.values() if n.type == NodeType.MANUAL
+            )
+            function_count = sum(
+                1 for n in runbook.nodes.values() if n.type == NodeType.FUNCTION
+            )
+            command_count = sum(
+                1 for n in runbook.nodes.values() if n.type == NodeType.COMMAND
+            )
 
             console.print(f"  • Manual nodes: {manual_count}")
             console.print(f"  • Function nodes: {function_count}")
@@ -266,7 +312,9 @@ def validate(
 @app.command()
 def export_dot(
     file: Path = typer.Argument(..., help="Runbook file path"),
-    output: Optional[Path] = typer.Option(None, "--output", help="Output DOT file path")
+    output: Optional[Path] = typer.Option(
+        None, "--output", help="Output DOT file path"
+    ),
 ):
     """Export runbook as DOT file for Graphviz"""
     parser = RunbookParser()
@@ -295,248 +343,240 @@ def export_dot(
 @app.command()
 def run(
     file: Path = typer.Argument(..., help="Runbook file path"),
-    state_path: Optional[str] = typer.Option(None, "--state-path", help="State database path")
+    state_path: Optional[str] = typer.Option(
+        None, "--state-path", help="State database path"
+    ),
 ):
     """Run a playbook from start to finish"""
     parser = RunbookParser()
-
-    try:
-        # Parse runbook
-        console.print(f"Parsing runbook: {file}")
-        runbook = parser.parse(str(file))
-
-        # Execute nodes
-        with Progress() as progress:
-            io_handler = ConsoleNodeIOHandler(console, progress)
-            engine = get_engine(state_path, io_handler)
-
-            console.print(f"Starting run: {runbook.title}")
-            run_info = engine.start_run(runbook)
-
-            console.print(f"Run ID: {run_info.run_id}")
-
-            # Get execution order
-            order = engine._get_execution_order(runbook)
-
-            task = progress.add_task("Running...", total=len(order))
-
-            for node_id in order:
-                node = runbook.nodes[node_id]
-
-                progress.update(task, description=f"Running {node.name or node_id}")
-
-                # Execute node
-                status, execution = engine.execute_node(runbook, node_id, run_info)
-
-                # Handle result
-                if status == NodeStatus.OK:
-                    progress.update(task, description=f"Completed: {node.name or node_id}")
-                elif status == NodeStatus.NOK:
-                    progress.update(task, description=f"Failed: {node.name or node_id}")
-
-                    # Display error
-                    if execution.exception:
-                        console.print(f"[bold red]Error:[/bold red] {execution.exception}")
-
-                    if execution.stderr:
-                        console.print(f"[bold red]stderr:[/bold red]\n{execution.stderr}")
-
-                    # If node is critical, abort
-                    if node.critical:
-                        console.print("[bold red]Critical node failed, aborting[/bold red]")
-                        break
-
-                    # Ask user what to do
-                    choice = Prompt.ask(
-                        "Node failed. What would you like to do?",
-                        choices=["r", "s", "a"],
-                        default="r"
-                    )
-
-                    if choice == "r":
-                        # Retry would be implemented here
-                        console.print("Retry not implemented in prototype")
-                    elif choice == "s":
-                        if not node.skippable:
-                            console.print("[bold red]Cannot skip non-skippable node[/bold red]")
-                            # Retry would be forced here
-                        else:
-                            console.print("Skipping node")
-                            # Skip logic would be implemented here
-                    elif choice == "a":
-                        console.print("Aborting run")
-                        break
-
-                progress.update(task, advance=1)
-
-        # Update run status
-        final_status = engine.update_run_status(runbook, run_info)
-
-        if final_status == RunStatus.OK:
-            console.print("[bold green]Run completed successfully[/bold green]")
-        else:
-            console.print("[bold red]Run failed[/bold red]")
-
-    except Exception as e:
-        console.print(f"[bold red]Error:[/bold red] {str(e)}")
-        sys.exit(1)
+    _execute_workflow(parser, file, state_path)
 
 
 @app.command()
 def resume(
     file: Path = typer.Argument(..., help="Runbook file path"),
     run_id: int = typer.Argument(..., help="Run ID to resume"),
-    node_id: Optional[str] = typer.Option(None, "--node", help="Node ID to resume from"),
-    state_path: Optional[str] = typer.Option(None, "--state-path", help="State database path")
+    node_id: Optional[str] = typer.Option(
+        None, "--node", help="Node ID to resume from"
+    ),
+    state_path: Optional[str] = typer.Option(
+        None, "--state-path", help="State database path"
+    ),
 ):
     """Resume a previously started run"""
     parser = RunbookParser()
+    _execute_workflow(parser, file, state_path, run_id, node_id)
 
+
+def _execute_workflow(
+    parser: RunbookParser,
+    file: Path,
+    state_path: Optional[str] = None,
+    run_id: Optional[int] = None,
+    start_node_id: Optional[str] = None,
+) -> None:
+    """
+    Shared workflow execution logic for both run and resume commands
+    """
     try:
         # Parse runbook
         console.print(f"Parsing runbook: {file}")
         runbook = parser.parse(str(file))
 
-        # Execute nodes
-        with Progress() as progress:
-            # Create IO handler
-            io_handler = ConsoleNodeIOHandler(console, progress)
+        # Create progress display and IO handler
+        progress = Progress()
+        io_handler = ConsoleNodeIOHandler(console, progress)
+        engine = get_engine(state_path, io_handler)
 
-            # Get engine with IO handler
-            engine = get_engine(state_path, io_handler)
-
+        # Initialize run info based on whether we're resuming or starting fresh
+        if run_id is not None:
             console.print(f"Resuming run: {runbook.title} (Run ID: {run_id})")
-            run_info = engine.resume_run(runbook, run_id)
-
-            # Get execution order
-            order = engine._get_execution_order(runbook)
-
-            # Get existing executions to determine what to run
-            existing_executions = engine.node_repo.get_executions(runbook.title, run_id)
-
-            # Create a map of node_id to its execution status
-            node_status = {}
-            for execution in existing_executions:
-                if execution.node_id not in node_status or execution.status != NodeStatus.OK:
-                    node_status[execution.node_id] = execution.status
-
-            # Determine which nodes to run based on their status and dependencies
-            nodes_to_run = []
-
-            # If a start node is specified, find its index in the execution order
-            start_idx = 0
-            if node_id:
-                try:
-                    start_idx = order.index(node_id)
-                except ValueError:
-                    raise ValueError(f"Start node '{node_id}' not found in runbook")
-
-            # Include all nodes from start_idx that haven't successfully completed
-            for i in range(start_idx, len(order)):
-                current_node_id = order[i]
-
-                # Skip nodes that are already OK or SKIPPED
-                if current_node_id in node_status and node_status[current_node_id] in [NodeStatus.OK,
-                                                                                       NodeStatus.SKIPPED]:
-                    continue
-
-                # Include this node and any dependencies that need to be run
-                nodes_to_run.append(current_node_id)
-
-            if not nodes_to_run:
-                console.print("[bold yellow]No nodes to resume - all nodes are already completed[/bold yellow]")
-                return
-
-            # Run the nodes that need running
-            task = progress.add_task("Resuming...", total=len(nodes_to_run))
-
-            for idx, current_node_id in enumerate(nodes_to_run):
-                node = runbook.nodes[current_node_id]
-                node_display_name = node.name or current_node_id
-
-                progress.update(task, description=f"Running {node_display_name}")
-
-                # Determine if we need to create a new execution or update an existing one
-                existing_execution = None
-                for execution in existing_executions:
-                    if execution.node_id == current_node_id:
-                        existing_execution = execution
-                        break
-
-                # Execute the node
-                if existing_execution and existing_execution.status in [NodeStatus.RUNNING, NodeStatus.PENDING]:
-                    # Update existing execution to avoid unique constraint error
-                    status, execution = engine.execute_node_with_existing_record(
-                        runbook, current_node_id, run_info, existing_execution.attempt
-                    )
-                else:
-                    # Create new execution record
-                    status, execution = engine.execute_node(
-                        runbook, current_node_id, run_info
-                    )
-
-                # Handle failure
-                if status == NodeStatus.OK:
-                    progress.update(task, description=f"Completed: {node.name or node_id}")
-                elif status == NodeStatus.NOK:
-                    progress.update(task, description=f"Failed: {node_display_name}")
-
-                    # Display error information
-                    if execution.exception:
-                        console.print(f"[bold red]Error:[/bold red] {execution.exception}")
-
-                    if execution.stderr:
-                        console.print(f"[bold red]stderr:[/bold red]\n{execution.stderr}")
-
-                    # Critical failure stops the workflow
-                    if node.critical:
-                        console.print("[bold red]Critical node failed, aborting[/bold red]")
-                        break
-
-                    # Interactive decision
-                    choice = Prompt.ask(
-                        "Node failed. What would you like to do?",
-                        choices=["r", "s", "a"],
-                        default="r"
-                    )
-
-                    if choice == "r":
-                        # Retry would go here in a full implementation
-                        console.print("Retry not implemented in prototype")
-                    elif choice == "s":
-                        if not node.skippable:
-                            console.print("[bold red]Cannot skip non-skippable node[/bold red]")
-                        else:
-                            console.print("Skipping node")
-                            execution.status = NodeStatus.SKIPPED
-                            engine.node_repo.update_execution(execution)
-                    elif choice == "a":
-                        console.print("Aborting run")
-                        break
-
-                # Update progress
-                progress.update(task, advance=1)
-
-                # If we've reached the end, make sure to update run status
-                if idx == len(nodes_to_run) - 1:
-                    engine.update_run_status(runbook, run_info)
-
-        # Final run status update
-        final_status = engine.update_run_status(runbook, run_info)
-
-        if final_status == RunStatus.OK:
-            console.print("[bold green]Run completed successfully[/bold green]")
+            run_info = engine.resume_run(runbook, run_id, start_node_id)
         else:
-            console.print("[bold red]Run failed[/bold red]")
+            console.print(f"Starting run: {runbook.title}")
+            run_info = engine.start_run(runbook)
+            console.print(f"Run ID: {run_info.run_id}")
+
+        # Get execution order
+        order = engine._get_execution_order(runbook)
+
+        # Determine which nodes to run
+        nodes_to_run = _determine_nodes_to_run(
+            engine, runbook, run_info, order, start_node_id
+        )
+
+        if not nodes_to_run:
+            console.print(
+                "[bold yellow]No nodes to execute - all nodes are already completed[/bold yellow]"
+            )
+            return
+
+        # Execute the workflow
+        _execute_nodes(engine, runbook, run_info, nodes_to_run, progress, io_handler)
 
     except Exception as e:
         console.print(f"[bold red]Error:[/bold red] {str(e)}")
         sys.exit(1)
 
+
+def _determine_nodes_to_run(
+    engine: RunbookEngine,
+    runbook: Runbook,
+    run_info: RunInfo,
+    order: List[str],
+    start_node_id: Optional[str] = None,
+) -> List[str]:
+    """
+    Determine which nodes need to be executed based on run state
+    """
+    # For a new run, execute all nodes
+    if run_info.trigger == TriggerType.RUN:
+        return order
+
+    # For resume, get existing executions to determine what to run
+    existing_executions = engine.node_repo.get_executions(
+        runbook.title, run_info.run_id
+    )
+
+    # Create a map of node_id to its latest execution
+    node_executions = {}
+    for execution in existing_executions:
+        node_executions[execution.node_id] = execution
+
+    # Determine which nodes to run
+    start_idx = 0
+    if start_node_id:
+        try:
+            start_idx = order.index(start_node_id)
+        except ValueError:
+            raise ValueError(f"Start node '{start_node_id}' not found in runbook")
+
+    # Include all nodes from start_idx that haven't successfully completed
+    nodes_to_run = []
+    for i in range(start_idx, len(order)):
+        current_node_id = order[i]
+        if current_node_id not in node_executions or node_executions[
+            current_node_id
+        ].status not in [NodeStatus.OK, NodeStatus.SKIPPED]:
+            nodes_to_run.append(current_node_id)
+
+    return nodes_to_run
+
+
+def _execute_nodes(
+    engine: RunbookEngine,
+    runbook: Runbook,
+    run_info: RunInfo,
+    nodes_to_run: List[str],
+    progress: Progress,
+    io_handler: ConsoleNodeIOHandler,
+) -> None:
+    """
+    Execute the given nodes in the runbook
+    """
+    # Get all existing executions at the beginning
+    existing_executions = engine.node_repo.get_executions(
+        runbook.title, run_info.run_id
+    )
+    existing_executions_map = {ex.node_id: ex for ex in existing_executions}
+
+    # Start the progress display with a single task
+    with progress:
+        task = progress.add_task("Executing workflow...", total=len(nodes_to_run) + 1)
+
+        for i, current_node_id in enumerate(nodes_to_run):
+            node = runbook.nodes[current_node_id]
+            node_display_name = node.name or current_node_id
+
+            # Set the current node in the IO handler
+            io_handler.set_current_node(current_node_id)
+
+            # Update progress bar with current node
+            progress.start()
+            progress.update(task, description=f"Running {node_display_name}")
+            # Hide the progress bar during execution to prevent duplicate display
+            progress.stop()
+
+            # Check if this node has an existing execution record
+            existing_execution = existing_executions_map.get(current_node_id)
+
+            # Execute node based on whether it has an existing execution
+            if existing_execution and existing_execution.status != NodeStatus.OK:
+                # Resume with existing record
+                status, execution = engine.resume_node_execution(
+                    runbook, current_node_id, run_info, existing_execution
+                )
+            else:
+                # Create new execution record (for fresh nodes)
+                status, execution = engine.execute_node(
+                    runbook, current_node_id, run_info
+                )
+
+            # Update progress based on result
+            if status == NodeStatus.OK:
+                progress.update(
+                    task, description=f"Completed: {node_display_name}", advance=1
+                )
+            elif status == NodeStatus.NOK:
+                progress.update(
+                    task, description=f"Failed: {node_display_name}", advance=1
+                )
+
+                # Handle node failure
+                if execution.exception:
+                    console.print(f"[bold red]Error:[/bold red] {execution.exception}")
+
+                if execution.stderr:
+                    console.print(f"[bold red]stderr:[/bold red]\n{execution.stderr}")
+
+                # If node is critical, abort
+                if node.critical:
+                    console.print("[bold red]Critical node failed, aborting[/bold red]")
+                    break
+
+                # Ask user what to do
+                progress.stop()  # Hide progress bar for user interaction
+                choice = Prompt.ask(
+                    "Node failed. What would you like to do?",
+                    choices=["r", "s", "a"],
+                    default="r",
+                )
+
+                if choice == "r":
+                    console.print("Retry not implemented in prototype")
+                elif choice == "s":
+                    if not node.skippable:
+                        console.print(
+                            "[bold red]Cannot skip non-skippable node[/bold red]"
+                        )
+                    else:
+                        console.print("Skipping node")
+                        execution.status = NodeStatus.SKIPPED
+                        engine.node_repo.update_execution(execution)
+                elif choice == "a":
+                    console.print("Aborting run")
+                    run_info.status = RunStatus.ABORTED
+                    engine.run_repo.update_run(run_info)
+                    break
+
+            engine.update_run_status(runbook, run_info)
+
+        # Update run status
+        final_status = engine.update_run_status(runbook, run_info)
+
+        # Show final status
+        if final_status == RunStatus.OK:
+            progress.start()  # Avoid showing progress on failure again
+            console.print("\n[bold green]Run completed successfully[/bold green]")
+            progress.update(task, description="Success!", advance=1)
+        else:
+            console.print("\n[bold red]Run failed[/bold red]")
+
+
 @app.command()
 def info(
     json_format: bool = typer.Option(False, "--json", help="Output as JSON"),
-    show_ddl: bool = typer.Option(False, "--ddl", help="Show database schema as DDL")
+    show_ddl: bool = typer.Option(False, "--ddl", help="Show database schema as DDL"),
 ):
     """Show database info and workflow statistics"""
     config = load_config()
@@ -554,7 +594,7 @@ def info(
             return
 
         # Show database info
-        console.print(f"[bold]Database Information:[/bold]")
+        console.print("[bold]Database Information:[/bold]")
         console.print(f"Path: {db_info['path']}")
         console.print(f"Size: {db_info['size_kb']:.2f} KB")
 
@@ -565,7 +605,15 @@ def info(
             console.print("\n[bold]Workflow Statistics:[/bold]")
 
             # Create workflow stats table
-            table = Table("Workflow", "Total Runs", "OK", "NOK", "Running", "Aborted", "Latest Run")
+            table = Table(
+                "Workflow",
+                "Total Runs",
+                "OK",
+                "NOK",
+                "Running",
+                "Aborted",
+                "Latest Run",
+            )
 
             for workflow_name, stats in workflow_stats.items():
                 status_counts = stats["status_counts"]
@@ -581,7 +629,7 @@ def info(
                     str(nok_count),
                     str(running_count),
                     str(aborted_count),
-                    stats["latest_run"] or "N/A"
+                    stats["latest_run"] or "N/A",
                 )
 
             console.print(table)
@@ -593,7 +641,9 @@ def info(
             console.print("\n[bold]Node Statistics:[/bold]")
 
             # Create node stats table
-            table = Table("Workflow", "Node", "OK", "NOK", "Skipped", "Pending", "Running")
+            table = Table(
+                "Workflow", "Node", "OK", "NOK", "Skipped", "Pending", "Running"
+            )
 
             for key, stats in node_stats.items():
                 status_counts = stats["status_counts"]
@@ -605,7 +655,7 @@ def info(
                     str(status_counts.get("nok", 0)),
                     str(status_counts.get("skipped", 0)),
                     str(status_counts.get("pending", 0)),
-                    str(status_counts.get("running", 0))
+                    str(status_counts.get("running", 0)),
                 )
 
             console.print(table)
@@ -628,7 +678,9 @@ def info(
 def show(
     workflow: str = typer.Argument(..., help="Workflow name"),
     run_id: Optional[int] = typer.Option(None, "--run-id", help="Run ID to show"),
-    state_path: Optional[str] = typer.Option(None, "--state-path", help="State database path")
+    state_path: Optional[str] = typer.Option(
+        None, "--state-path", help="State database path"
+    ),
 ):
     """Show run details"""
     engine = get_engine(state_path)
@@ -647,7 +699,14 @@ def show(
                 return
 
             # Create table
-            table = Table("Run ID", "Start Time", "Status", "Nodes OK", "Nodes NOK", "Nodes Skipped")
+            table = Table(
+                "Run ID",
+                "Start Time",
+                "Status",
+                "Nodes OK",
+                "Nodes NOK",
+                "Nodes Skipped",
+            )
 
             for run in runs:
                 status_color = "green" if run.status == RunStatus.OK else "red"
@@ -657,7 +716,7 @@ def show(
                     f"[{status_color}]{run.status.value}[/{status_color}]",
                     str(run.nodes_ok),
                     str(run.nodes_nok),
-                    str(run.nodes_skipped)
+                    str(run.nodes_skipped),
                 )
 
             console.print(table)
@@ -667,11 +726,17 @@ def show(
             run = run_repo.get_run(workflow, run_id)
 
             console.print(f"[bold]Run: {workflow} #{run_id}[/bold]")
-            console.print(f"Start time: {run.start_time.isoformat() if run.start_time else 'N/A'}")
-            console.print(f"End time: {run.end_time.isoformat() if run.end_time else 'N/A'}")
+            console.print(
+                f"Start time: {run.start_time.isoformat() if run.start_time else 'N/A'}"
+            )
+            console.print(
+                f"End time: {run.end_time.isoformat() if run.end_time else 'N/A'}"
+            )
 
             status_color = "green" if run.status == RunStatus.OK else "red"
-            console.print(f"Status: [{status_color}]{run.status.value}[/{status_color}]")
+            console.print(
+                f"Status: [{status_color}]{run.status.value}[/{status_color}]"
+            )
 
             console.print(f"Nodes OK: {run.nodes_ok}")
             console.print(f"Nodes NOK: {run.nodes_nok}")
@@ -686,17 +751,29 @@ def show(
                 table = Table("Node ID", "Status", "Duration", "Start Time")
 
                 for execution in executions:
-                    status_color = "green" if execution.status == NodeStatus.OK else (
-                        "yellow" if execution.status == NodeStatus.SKIPPED else "red"
+                    status_color = (
+                        "green"
+                        if execution.status == NodeStatus.OK
+                        else (
+                            "yellow"
+                            if execution.status == NodeStatus.SKIPPED
+                            else "red"
+                        )
                     )
 
-                    duration = f"{execution.duration_ms / 1000:.2f}s" if execution.duration_ms else "N/A"
+                    duration = (
+                        f"{execution.duration_ms / 1000:.2f}s"
+                        if execution.duration_ms
+                        else "N/A"
+                    )
 
                     table.add_row(
                         execution.node_id,
                         f"[{status_color}]{execution.status.value}[/{status_color}]",
                         duration,
-                        execution.start_time.isoformat() if execution.start_time else "N/A"
+                        execution.start_time.isoformat()
+                        if execution.start_time
+                        else "N/A",
                     )
 
                 console.print(table)
@@ -716,9 +793,9 @@ def main(
     logging.basicConfig(
         level=level,
         format="%(message)s",
-        handlers=[RichHandler(console=console, rich_tracebacks=True)]
+        handlers=[RichHandler(console=console, rich_tracebacks=True)],
     )
-    for logger_name in ('botocore', 'boto3', 'urllib3'):
+    for logger_name in ("botocore", "boto3", "urllib3"):
         logging.getLogger(logger_name).setLevel(logging.INFO)
 
     if ctx.invoked_subcommand is None and version:

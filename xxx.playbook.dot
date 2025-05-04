@@ -1,0 +1,6 @@
+// Runbook for xxx
+digraph xxx {
+	approve [label=approve color=red fillcolor=lightblue penwidth=2 shape=ellipse style=filled]
+	build [label="Build step" fillcolor=lightyellow shape=hexagon style=filled]
+	notify [label=notify fillcolor=lightgreen shape=box style=filled]
+}

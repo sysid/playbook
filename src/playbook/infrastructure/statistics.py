@@ -20,7 +20,7 @@ class SQLiteStatisticsRepository(StatisticsRepository):
         return {
             "exists": True,
             "path": str(self.db_path),
-            "size_kb": self.db_path.stat().st_size / 1024
+            "size_kb": self.db_path.stat().st_size / 1024,
         }
 
     def get_workflow_stats(self) -> Dict[str, Dict]:
@@ -50,7 +50,7 @@ class SQLiteStatisticsRepository(StatisticsRepository):
                     WHERE workflow_name = ?
                     GROUP BY status
                     """,
-                    (workflow_name,)
+                    (workflow_name,),
                 )
                 status_counts = {row["status"]: row["count"] for row in status_cursor}
 
@@ -62,7 +62,7 @@ class SQLiteStatisticsRepository(StatisticsRepository):
                     WHERE workflow_name = ?
                     ORDER BY run_id DESC LIMIT 1
                     """,
-                    (workflow_name,)
+                    (workflow_name,),
                 )
                 latest = latest_cursor.fetchone()
 
@@ -70,7 +70,7 @@ class SQLiteStatisticsRepository(StatisticsRepository):
                     "total_runs": workflow["run_count"],
                     "status_counts": status_counts,
                     "latest_run": latest["start_time"] if latest else None,
-                    "latest_status": latest["status"] if latest else None
+                    "latest_status": latest["status"] if latest else None,
                 }
 
         return result
@@ -101,7 +101,13 @@ class SQLiteStatisticsRepository(StatisticsRepository):
                     result[key] = {
                         "workflow_name": stat["workflow_name"],
                         "node_id": stat["node_id"],
-                        "status_counts": {"ok": 0, "nok": 0, "skipped": 0, "pending": 0, "running": 0}
+                        "status_counts": {
+                            "ok": 0,
+                            "nok": 0,
+                            "skipped": 0,
+                            "pending": 0,
+                            "running": 0,
+                        },
                     }
 
                 result[key]["status_counts"][stat["status"]] = stat["count"]
@@ -119,9 +125,7 @@ class SQLiteStatisticsRepository(StatisticsRepository):
             conn.row_factory = sqlite3.Row
 
             # Get table names
-            cursor = conn.execute(
-                "SELECT name FROM sqlite_master WHERE type='table'"
-            )
+            cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
             tables = cursor.fetchall()
 
             for table in tables:
@@ -131,23 +135,22 @@ class SQLiteStatisticsRepository(StatisticsRepository):
                 if table_name.startswith("sqlite_"):
                     continue
 
-                schema[table_name] = {
-                    "columns": [],
-                    "indexes": []
-                }
+                schema[table_name] = {"columns": [], "indexes": []}
 
                 # Get table schema
                 schema_cursor = conn.execute(f"PRAGMA table_info({table_name})")
                 columns = schema_cursor.fetchall()
 
                 for col in columns:
-                    schema[table_name]["columns"].append({
-                        "name": col["name"],
-                        "type": col["type"],
-                        "not_null": bool(col["notnull"]),
-                        "default": col["dflt_value"],
-                        "primary_key": bool(col["pk"])
-                    })
+                    schema[table_name]["columns"].append(
+                        {
+                            "name": col["name"],
+                            "type": col["type"],
+                            "not_null": bool(col["notnull"]),
+                            "default": col["dflt_value"],
+                            "primary_key": bool(col["pk"]),
+                        }
+                    )
 
                 # Get indexes
                 index_cursor = conn.execute(f"PRAGMA index_list({table_name})")
@@ -157,13 +160,11 @@ class SQLiteStatisticsRepository(StatisticsRepository):
                     index_info = {
                         "name": idx["name"],
                         "unique": bool(idx["unique"]),
-                        "columns": []
+                        "columns": [],
                     }
 
                     # Get indexed columns
-                    idx_info_cursor = conn.execute(
-                        f"PRAGMA index_info({idx['name']})"
-                    )
+                    idx_info_cursor = conn.execute(f"PRAGMA index_info({idx['name']})")
                     for col in idx_info_cursor:
                         index_info["columns"].append(col["name"])
 

@@ -2,7 +2,7 @@
 import sqlite3
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 from ..domain.models import NodeExecution, NodeStatus, RunInfo, RunStatus, TriggerType
 from ..domain.ports import RunRepository, NodeExecutionRepository
@@ -124,7 +124,7 @@ class SQLiteRunRepository(SQLiteRepository, RunRepository):
             # Get next run_id
             cursor = conn.execute(
                 "SELECT COALESCE(MAX(run_id), 0) + 1 FROM runs WHERE workflow_name = ?",
-                (run_info.workflow_name,)
+                (run_info.workflow_name,),
             )
             run_id = cursor.fetchone()[0]
 
@@ -144,8 +144,8 @@ class SQLiteRunRepository(SQLiteRepository, RunRepository):
                     run_info.nodes_ok,
                     run_info.nodes_nok,
                     run_info.nodes_skipped,
-                    run_info.trigger.value
-                )
+                    run_info.trigger.value,
+                ),
             )
 
             return run_id
@@ -171,8 +171,8 @@ class SQLiteRunRepository(SQLiteRepository, RunRepository):
                     run_info.nodes_nok,
                     run_info.nodes_skipped,
                     run_info.workflow_name,
-                    run_info.run_id
-                )
+                    run_info.run_id,
+                ),
             )
 
     def get_run(self, workflow_name: str, run_id: int) -> RunInfo:
@@ -181,7 +181,7 @@ class SQLiteRunRepository(SQLiteRepository, RunRepository):
             conn.row_factory = sqlite3.Row
             cursor = conn.execute(
                 "SELECT * FROM runs WHERE workflow_name = ? AND run_id = ?",
-                (workflow_name, run_id)
+                (workflow_name, run_id),
             )
             row = cursor.fetchone()
 
@@ -197,7 +197,7 @@ class SQLiteRunRepository(SQLiteRepository, RunRepository):
                 nodes_ok=row["nodes_ok"],
                 nodes_nok=row["nodes_nok"],
                 nodes_skipped=row["nodes_skipped"],
-                trigger=TriggerType(row["trigger"])
+                trigger=TriggerType(row["trigger"]),
             )
 
     def list_runs(self, workflow_name: str) -> List[RunInfo]:
@@ -206,22 +206,24 @@ class SQLiteRunRepository(SQLiteRepository, RunRepository):
             conn.row_factory = sqlite3.Row
             cursor = conn.execute(
                 "SELECT * FROM runs WHERE workflow_name = ? ORDER BY run_id DESC",
-                (workflow_name,)
+                (workflow_name,),
             )
 
             runs = []
             for row in cursor:
-                runs.append(RunInfo(
-                    workflow_name=row["workflow_name"],
-                    run_id=row["run_id"],
-                    start_time=self._str_to_datetime(row["start_time"]),
-                    end_time=self._str_to_datetime(row["end_time"]),
-                    status=RunStatus(row["status"]),
-                    nodes_ok=row["nodes_ok"],
-                    nodes_nok=row["nodes_nok"],
-                    nodes_skipped=row["nodes_skipped"],
-                    trigger=TriggerType(row["trigger"])
-                ))
+                runs.append(
+                    RunInfo(
+                        workflow_name=row["workflow_name"],
+                        run_id=row["run_id"],
+                        start_time=self._str_to_datetime(row["start_time"]),
+                        end_time=self._str_to_datetime(row["end_time"]),
+                        status=RunStatus(row["status"]),
+                        nodes_ok=row["nodes_ok"],
+                        nodes_nok=row["nodes_nok"],
+                        nodes_skipped=row["nodes_skipped"],
+                        trigger=TriggerType(row["trigger"]),
+                    )
+                )
 
             return runs
 
@@ -253,8 +255,8 @@ class SQLiteNodeExecutionRepository(SQLiteRepository, NodeExecutionRepository):
                     execution.exception,
                     execution.stdout,
                     execution.stderr,
-                    execution.duration_ms
-                )
+                    execution.duration_ms,
+                ),
             )
 
     def update_execution(self, execution: NodeExecution) -> None:
@@ -290,8 +292,8 @@ class SQLiteNodeExecutionRepository(SQLiteRepository, NodeExecutionRepository):
                     execution.workflow_name,
                     execution.run_id,
                     execution.node_id,
-                    execution.attempt
-                )
+                    execution.attempt,
+                ),
             )
 
     def get_executions(self, workflow_name: str, run_id: int) -> List[NodeExecution]:
@@ -306,26 +308,28 @@ class SQLiteNodeExecutionRepository(SQLiteRepository, NodeExecutionRepository):
                   AND run_id = ?
                 ORDER BY node_id, attempt
                 """,
-                (workflow_name, run_id)
+                (workflow_name, run_id),
             )
 
             executions = []
             for row in cursor:
-                executions.append(NodeExecution(
-                    workflow_name=row["workflow_name"],
-                    run_id=row["run_id"],
-                    node_id=row["node_id"],
-                    attempt=row["attempt"],
-                    start_time=self._str_to_datetime(row["start_time"]),
-                    end_time=self._str_to_datetime(row["end_time"]),
-                    status=NodeStatus(row["status"]),
-                    operator_decision=row["operator_decision"],
-                    result_text=row["result_text"],
-                    exit_code=row["exit_code"],
-                    exception=row["exception"],
-                    stdout=row["stdout"],
-                    stderr=row["stderr"],
-                    duration_ms=row["duration_ms"]
-                ))
+                executions.append(
+                    NodeExecution(
+                        workflow_name=row["workflow_name"],
+                        run_id=row["run_id"],
+                        node_id=row["node_id"],
+                        attempt=row["attempt"],
+                        start_time=self._str_to_datetime(row["start_time"]),
+                        end_time=self._str_to_datetime(row["end_time"]),
+                        status=NodeStatus(row["status"]),
+                        operator_decision=row["operator_decision"],
+                        result_text=row["result_text"],
+                        exit_code=row["exit_code"],
+                        exception=row["exception"],
+                        stdout=row["stdout"],
+                        stderr=row["stderr"],
+                        duration_ms=row["duration_ms"],
+                    )
+                )
 
             return executions

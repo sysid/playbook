@@ -1,5 +1,5 @@
 # src/playbook/service/statistics.py
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 from ..domain.ports import StatisticsRepository
 

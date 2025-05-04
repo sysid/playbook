@@ -14,9 +14,7 @@ class GraphvizVisualizer(Visualizer):
         """Export runbook as DOT file"""
         # Create a new directed graph
         dot = graphviz.Digraph(
-            name=runbook.title,
-            comment=runbook.description,
-            format="dot"
+            name=runbook.title, comment=runbook.description, format="dot"
         )
 
         # Add each node to the graph
@@ -37,7 +35,9 @@ class GraphvizVisualizer(Visualizer):
             # Save to file
             dot.save(output_path)
 
-    def _get_node_attributes(self, node_type: NodeType, critical: bool) -> Dict[str, str]:
+    def _get_node_attributes(
+        self, node_type: NodeType, critical: bool
+    ) -> Dict[str, str]:
         """Get node visualization attributes based on type"""
         attrs = {}
 
