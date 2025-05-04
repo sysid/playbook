@@ -5,9 +5,16 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="5a384825-87f7-4752-bb95-dcf8d7a51e56" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/complex.playbook.toml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/runConfigurations/playbook_infrastructure_cli_run.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/dag.png" beforeDir="false" afterPath="$PROJECT_DIR$/dag.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/complex.playbook.dot" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/complex.playbook.toml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/playbook/domain/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/playbook/domain/models.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/playbook/domain/ports.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/playbook/domain/ports.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/playbook/infrastructure/cli.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/playbook/infrastructure/cli.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/playbook/infrastructure/parser.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/playbook/infrastructure/parser.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/playbook/infrastructure/process.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/playbook/infrastructure/process.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/playbook/service/engine.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/playbook/service/engine.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -34,12 +41,14 @@
     "ModuleVcsDetector.initialDetectionPerformed": "true",
     "Python tests.Python tests for test_engine.TestRunbookEngine.test_has_cycles_whenNoCyclesExist_thenReturnsFalse.executor": "Run",
     "Python tests.Python tests for test_engine.TestRunbookEngine.test_has_cycles_whenNonExistentDependency_thenRaisesKeyError.executor": "Run",
+    "Python tests.Python tests for test_engine.TestRunbookEngine.test_resume_node_execution_whenManualNode_thenExecutesManualNode.executor": "Run",
     "Python tests.Python tests for test_engine.TestRunbookEngine.test_update_run_status_whenAllNodesOK_thenRunStatusOK.executor": "Run",
     "Python tests.Python tests for test_engine.TestRunbookEngine.test_update_run_status_whenCriticalNodeFails_thenRunStatusNOK.executor": "Run",
     "Python tests.Python tests for test_engine.TestRunbookEngine.test_validate_whenNonExistentDependency_thenReturnsError.executor": "Run",
     "Python tests.Python tests in test_engine.py.executor": "Run",
     "Python.cli.executor": "Run",
     "Python.playbook.infrastructure.cli experimenting.executor": "Debug",
+    "Python.playbook.infrastructure.cli run.executor": "Debug",
     "Python.playbook.infrastructure.cli.executor": "Run",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.git.unshallow": "true",
@@ -59,7 +68,7 @@
       <recent name="$PROJECT_DIR$" />
     </key>
   </component>
-  <component name="RunManager" selected="Python tests.Python tests in test_engine.py">
+  <component name="RunManager" selected="Python tests.Python tests for test_engine.TestRunbookEngine.test_resume_node_execution_whenManualNode_thenExecutesManualNode">
     <configuration default="true" type="PythonConfigurationType" factoryName="Python">
       <module name="playbook" />
       <option name="ENV_FILES" value="" />
@@ -88,7 +97,7 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="Python tests for test_engine.TestRunbookEngine.test_has_cycles_whenNonExistentDependency_thenRaisesKeyError" type="tests" factoryName="Autodetect" temporary="true" nameIsGenerated="true">
+    <configuration name="Python tests for test_engine.TestRunbookEngine.test_resume_node_execution_whenManualNode_thenExecutesManualNode" type="tests" factoryName="Autodetect" temporary="true" nameIsGenerated="true">
       <module name="playbook" />
       <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -98,8 +107,13 @@
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="software.aws.toolkits.jetbrains.core.execution.PythonAwsConnectionExtension">
+        <option name="credential" />
+        <option name="region" />
+        <option name="useCurrentConnection" value="false" />
+      </EXTENSION>
       <option name="_new_additionalArguments" value="&quot;&quot;" />
-      <option name="_new_target" value="&quot;test_engine.TestRunbookEngine.test_has_cycles_whenNonExistentDependency_thenRaisesKeyError&quot;" />
+      <option name="_new_target" value="&quot;test_engine.TestRunbookEngine.test_resume_node_execution_whenManualNode_thenExecutesManualNode&quot;" />
       <option name="_new_targetType" value="&quot;PYTHON&quot;" />
       <method v="2" />
     </configuration>
@@ -166,19 +180,20 @@
     <list>
       <item itemvalue="Python.playbook.infrastructure.cli" />
       <item itemvalue="Python.playbook.infrastructure.cli experimenting" />
+      <item itemvalue="Python.playbook.infrastructure.cli run" />
+      <item itemvalue="Python tests.Python tests for test_engine.TestRunbookEngine.test_resume_node_execution_whenManualNode_thenExecutesManualNode" />
       <item itemvalue="Python tests.Python tests for test_engine.TestRunbookEngine.test_update_run_status_whenAllNodesOK_thenRunStatusOK" />
       <item itemvalue="Python tests.Python tests for test_engine.TestRunbookEngine.test_update_run_status_whenCriticalNodeFails_thenRunStatusNOK" />
-      <item itemvalue="Python tests.Python tests for test_engine.TestRunbookEngine.test_has_cycles_whenNonExistentDependency_thenRaisesKeyError" />
       <item itemvalue="Python tests.Python tests for test_engine.TestRunbookEngine.test_validate_whenNonExistentDependency_thenReturnsError" />
       <item itemvalue="Python tests.Python tests in test_engine.py" />
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Python tests.Python tests for test_engine.TestRunbookEngine.test_resume_node_execution_whenManualNode_thenExecutesManualNode" />
         <item itemvalue="Python tests.Python tests in test_engine.py" />
         <item itemvalue="Python tests.Python tests for test_engine.TestRunbookEngine.test_update_run_status_whenAllNodesOK_thenRunStatusOK" />
         <item itemvalue="Python tests.Python tests for test_engine.TestRunbookEngine.test_update_run_status_whenCriticalNodeFails_thenRunStatusNOK" />
         <item itemvalue="Python.playbook.infrastructure.cli" />
-        <item itemvalue="Python tests.Python tests for test_engine.TestRunbookEngine.test_has_cycles_whenNonExistentDependency_thenRaisesKeyError" />
       </list>
     </recent_temporary>
   </component>
@@ -197,7 +212,7 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1746274703606</updated>
-      <workItem from="1746274704588" duration="25177000" />
+      <workItem from="1746274704588" duration="36254000" />
     </task>
     <servers />
   </component>
@@ -220,18 +235,18 @@
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/playbook/infrastructure/cli.py</url>
-          <line>447</line>
-          <option name="timeStamp" value="1" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/playbook/infrastructure/cli.py</url>
-          <line>439</line>
-          <option name="timeStamp" value="2" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/playbook/infrastructure/cli.py</url>
-          <line>462</line>
+          <line>465</line>
           <option name="timeStamp" value="3" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/playbook/service/engine.py</url>
+          <line>377</line>
+          <option name="timeStamp" value="4" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/playbook/service/engine.py</url>
+          <line>150</line>
+          <option name="timeStamp" value="5" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

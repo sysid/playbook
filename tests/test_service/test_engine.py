@@ -62,13 +62,13 @@ class TestRunbookEngine:
             created_at=datetime.now(timezone.utc),
             nodes={
                 "A": ManualNode(
-                    id="A", type=NodeType.MANUAL, prompt="Approve A?", depends_on=[]
+                    id="A", type=NodeType.MANUAL, prompt_after="Approve A?", depends_on=[]
                 ),
                 "B": ManualNode(
-                    id="B", type=NodeType.MANUAL, prompt="Approve B?", depends_on=["A"]
+                    id="B", type=NodeType.MANUAL, prompt_after="Approve B?", depends_on=["A"]
                 ),
                 "C": ManualNode(
-                    id="C", type=NodeType.MANUAL, prompt="Approve C?", depends_on=["B"]
+                    id="C", type=NodeType.MANUAL, prompt_after="Approve C?", depends_on=["B"]
                 ),
             },
         )
@@ -719,7 +719,7 @@ class TestRunbookEngine:
                 "manual_node": ManualNode(
                     id="manual_node",
                     type=NodeType.MANUAL,
-                    prompt="Approve?",
+                    prompt_after="Approve?",
                     depends_on=[],
                 )
             },
@@ -743,7 +743,7 @@ class TestRunbookEngine:
         )
 
         # Mock the IO handler to approve the manual node
-        mock_dependencies["io_handler"].handle_manual_prompt.return_value = True
+        mock_dependencies["io_handler"].handle_prompt.return_value = True
 
         # Act
         status, updated_execution = engine.resume_node_execution(
@@ -756,7 +756,7 @@ class TestRunbookEngine:
         assert updated_execution.operator_decision == "approved"
         assert updated_execution.end_time is not None
         mock_dependencies["node_repo"].update_execution.assert_called()
-        mock_dependencies["io_handler"].handle_manual_prompt.assert_called_once()
+        assert mock_dependencies["io_handler"].handle_prompt.call_count == 1
 
     def test_resume_node_execution_whenFunctionNode_thenExecutesFunction(
         self, engine, mock_dependencies

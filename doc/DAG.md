@@ -51,7 +51,7 @@ Each node is a table named `[<node_id>]` and includes these fields:
 | `skippable`    | ❌       | `false`     | All             | Can be skipped if failed |
 | `critical`     | ❌       | `false`     | All             | Causes workflow to abort if failed |
 | `timeout`      | ❌       | `300`       | `Command`, `Function` | Timeout in seconds |
-| `prompt`       | ✅       | —           | `Manual`        | Prompt message for user |
+| `prompt`       | ✅       | `Confirm?` | All        | Prompt message for user, `""` to skip prompting |
 | `confirm`      | ❌       | `true`      | `Manual`, `Function`, `Command` | Ask for confirmation |
 | `command_name` | ✅       | —           | `Command`       | Shell command to run |
 | `function_name`| ✅       | —           | `Function`      | Fully-qualified Python function path |

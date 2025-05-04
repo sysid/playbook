@@ -38,7 +38,7 @@ class RunbookEngine:
         function_loader: FunctionLoader,
         run_repo: RunRepository,
         node_repo: NodeExecutionRepository,
-        io_handler: Optional[NodeIOHandler] = None,
+        io_handler: NodeIOHandler,
     ):
         self.clock = clock
         self.process_runner = process_runner
@@ -147,14 +147,19 @@ class RunbookEngine:
 
         return run_info
 
-    def _handle_confirmation(self, node: BaseNode) -> bool:
-        """Common handler for node confirmation if confirm is True"""
-        if node.confirm and self.io_handler:
-            approved = self.io_handler.handle_manual_prompt(
-                node.id, node.name, node.description, node.prompt
-            )
-            return approved
-        return True  # If confirmation not needed or no IO handler, proceed
+    def _handle_before_confirmation(self, node: BaseNode) -> bool:
+        if node.prompt_before == "":
+            raise ValueError("'prompt_before' message not defined")
+
+        approved = self.io_handler.handle_prompt(node.id, node.name, node.prompt_before)
+        return approved
+
+    def _handle_after_confirmation(self, node: BaseNode) -> bool:
+        if node.prompt_after == "":
+            raise ValueError("'prompt_after' message not defined")
+
+        approved = self.io_handler.handle_prompt(node.id, node.name, node.prompt_after)
+        return approved
 
     def resume_run(
         self, runbook: Runbook, run_id: int, start_node_id: Optional[str] = None
@@ -243,6 +248,27 @@ class RunbookEngine:
         """Resume execution of a node that was already started"""
         node = runbook.nodes[node_id]
 
+        if node.skip:
+            if node.critical:
+                raise ValueError(
+                    f"Node '{node_id}' is critical and cannot be skipped"
+                )
+            # Update execution record to mark it as skipped
+            existing_execution.status = NodeStatus.SKIPPED
+            existing_execution.end_time = self.clock.now()
+            existing_execution.result_text = "Node skipped as configured in workflow definition"
+            self.node_repo.update_execution(existing_execution)
+
+            # If there's an IO handler, inform about the skip
+            if self.io_handler:
+                self.io_handler.handle_description_output(
+                    node_id,
+                    node.name,
+                    f"Skipped node: {node.description or ''}"
+                )
+
+            return existing_execution.status, existing_execution
+
         # Update execution record to mark it as running again
         existing_execution.status = NodeStatus.RUNNING
         self.node_repo.update_execution(existing_execution)
@@ -292,6 +318,31 @@ class RunbookEngine:
         node = runbook.nodes[node_id]
         start_time = self.clock.now()
 
+        if node.skip:
+            if node.critical:
+                raise ValueError(
+                    f"Node '{node_id}' is critical and cannot be skipped"
+                )
+            execution = NodeExecution(
+                workflow_name=runbook.title,
+                run_id=run_info.run_id,
+                node_id=node_id,
+                attempt=1,
+                start_time=start_time,
+                end_time=self.clock.now(),  # End time is same as start for skipped nodes
+                status=NodeStatus.SKIPPED,
+                result_text="Node skipped as configured in workflow definition"
+            )
+            self.node_repo.create_execution(execution)
+
+            self.io_handler.handle_description_output(
+                node_id,
+                node.name,
+                f"Skipped node: {node.description or ''}"
+            )
+
+            return execution.status, execution
+
         # Create initial execution record
         execution = NodeExecution(
             workflow_name=runbook.title,
@@ -326,78 +377,92 @@ class RunbookEngine:
         """Execute a manual node"""
         start_time = self.clock.now()
         execution = NodeExecution(
-            workflow_name="",
-            run_id=0,
-            node_id="",
-            attempt=0,
+            workflow_name="",  # Will be set by caller
+            run_id=0,  # Will be set by caller
+            node_id="",  # Will be set by caller
+            attempt=0,  # Will be set by caller
             start_time=start_time,
             status=NodeStatus.PENDING,
         )
 
-        # For ManualNode, we always prompt
-        if self.io_handler:
-            approved = self.io_handler.handle_manual_prompt(
-                node.id, node.name, node.description, node.prompt
-            )
-            execution.status = NodeStatus.OK if approved else NodeStatus.NOK
-            execution.operator_decision = "approved" if approved else "rejected"
-        else:
-            # If no handler, leave as pending
-            execution.status = NodeStatus.PENDING
+        if node.prompt_before != "" and not self._handle_before_confirmation(node):
+            execution.status = NodeStatus.NOK
+            execution.operator_decision = "rejected"
+            execution.end_time = self.clock.now()
+            return execution
 
-        execution.end_time = self.clock.now()
+        self.io_handler.handle_description_output(node.id, node.name, node.description)
 
-        if execution.end_time and execution.start_time:
-            execution.duration_ms = int(
-                (execution.end_time - execution.start_time).total_seconds() * 1000
-            )
+        if node.prompt_after == "":
+            raise ValueError("Manual node must have a prompt_after message defined")
 
+        if not self._handle_after_confirmation(node):
+            execution.status = NodeStatus.NOK
+            execution.operator_decision = "rejected"
+            execution.end_time = self.clock.now()
+            return execution
+
+        end_time = self.clock.now()
+        duration_ms = (
+            int((end_time - start_time).total_seconds() * 1000)
+            if end_time and start_time
+            else None
+        )
+        execution.end_time = end_time
+        execution.duration_ms = duration_ms
+        execution.status = NodeStatus.OK
+        execution.operator_decision = "approved"
         return execution
 
     def _execute_function_node(self, node: FunctionNode) -> NodeExecution:
         """Execute a function node"""
         start_time = self.clock.now()
+        execution = NodeExecution(
+            workflow_name="",  # Will be set by caller
+            run_id=0,  # Will be set by caller
+            node_id="",  # Will be set by caller
+            attempt=0,  # Will be set by caller
+            start_time=start_time,
+            status=NodeStatus.PENDING,
+        )
 
-        # Add confirmation check using the common handler
-        if not self._handle_confirmation(node):
-            return NodeExecution(
-                workflow_name="",
-                run_id=0,
-                node_id="",
-                attempt=0,
-                start_time=start_time,
-                end_time=self.clock.now(),
-                status=NodeStatus.NOK,
-                operator_decision="rejected",
-            )
+        if node.prompt_before != "" and not self._handle_before_confirmation(node):
+            execution.status = NodeStatus.NOK
+            execution.operator_decision = "rejected"
+            execution.end_time = self.clock.now()
+            return execution
 
         try:
             result = self.function_loader.load_and_call(
                 node.function_name, node.function_params
             )
-            execution = NodeExecution(
-                workflow_name="",
-                run_id=0,
-                node_id="",
-                attempt=0,
-                start_time=start_time,
-                status=NodeStatus.OK,
-                result_text=str(result),
+            end_time = self.clock.now()
+            duration_ms = (
+                int((end_time - start_time).total_seconds() * 1000)
+                if end_time and start_time
+                else None
             )
+            execution.end_time = end_time
+            execution.status = NodeStatus.OK
+            execution.result_text = str(result)
+            execution.duration_ms = duration_ms
 
-            # Use IO handler to display function result if available
             if self.io_handler and result:
                 self.io_handler.handle_function_output(
                     node.id, node.name, node.description, str(result)
                 )
+            if node.prompt_after == "":  # No prompt_after confirmation
+                return execution
 
-            execution.end_time = self.clock.now()
-            if execution.end_time and execution.start_time:
-                execution.duration_ms = int(
-                    (execution.end_time - execution.start_time).total_seconds() * 1000
-                )
+            if not self._handle_after_confirmation(node):
+                execution.status = NodeStatus.NOK
+                execution.operator_decision = "rejected"
+                execution.end_time = self.clock.now()
+                return execution
 
+            execution.operator_decision = "approved"
             return execution
+
         except Exception as e:
             end_time = self.clock.now()
             duration_ms = (
@@ -421,53 +486,55 @@ class RunbookEngine:
     def _execute_command_node(self, node: CommandNode) -> NodeExecution:
         """Execute a shell command node"""
         start_time = self.clock.now()
+        execution = NodeExecution(
+            workflow_name="",  # Will be set by caller
+            run_id=0,  # Will be set by caller
+            node_id="",  # Will be set by caller
+            attempt=0,  # Will be set by caller
+            start_time=start_time,
+            status=NodeStatus.PENDING,
+        )
 
-        # Add confirmation check using the common handler
-        if not self._handle_confirmation(node):
-            return NodeExecution(
-                workflow_name="",
-                run_id=0,
-                node_id="",
-                attempt=0,
-                start_time=start_time,
-                end_time=self.clock.now(),
-                status=NodeStatus.NOK,
-                operator_decision="rejected",
-            )
+        if node.prompt_before != "" and not self._handle_before_confirmation(node):
+            execution.status = NodeStatus.NOK
+            execution.operator_decision = "rejected"
+            execution.end_time = self.clock.now()
+            return execution
 
         try:
             exit_code, stdout, stderr = self.process_runner.run_command(
-                node.command_name, node.timeout
+                node.command_name, node.timeout, node.interactive
             )
-
-            status = NodeStatus.OK if exit_code == 0 else NodeStatus.NOK
-
-            # If we have an IO handler, use it for output
-            if self.io_handler and (stdout or stderr):
-                self.io_handler.handle_command_output(
-                    node.id, node.name, node.description, stdout, stderr
-                )
-
             end_time = self.clock.now()
             duration_ms = (
                 int((end_time - start_time).total_seconds() * 1000)
                 if end_time and start_time
                 else None
             )
+            execution.end_time = end_time
+            execution.status = NodeStatus.OK if exit_code == 0 else NodeStatus.NOK
+            execution.exit_code = exit_code
+            execution.stdout = stdout
+            execution.stderr = stderr
+            execution.duration_ms = duration_ms
 
-            return NodeExecution(
-                workflow_name="",
-                run_id=0,
-                node_id="",
-                attempt=0,
-                start_time=start_time,
-                end_time=end_time,
-                status=status,
-                exit_code=exit_code,
-                stdout=stdout,
-                stderr=stderr,
-                duration_ms=duration_ms,
-            )
+            # No output to display for interactive commands, since stdout/stderr were connected to terminal
+            if not node.interactive and self.io_handler and (stdout or stderr):
+                self.io_handler.handle_command_output(
+                    node.id, node.name, node.description, stdout, stderr
+                )
+            if node.prompt_after == "":  # No prompt_after confirmation
+                return execution
+
+            if not self._handle_after_confirmation(node):
+                execution.status = NodeStatus.NOK
+                execution.operator_decision = "rejected"
+                execution.end_time = self.clock.now()
+                return execution
+
+            execution.operator_decision = "approved"
+            return execution
+
         except Exception as e:
             end_time = self.clock.now()
             duration_ms = (

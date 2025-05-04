@@ -67,14 +67,28 @@ class ConsoleNodeIOHandler(NodeIOHandler):
         """Set the current node being processed"""
         self.current_node_id = node_id
 
-    def handle_manual_prompt(
+    def handle_prompt(
+        self,
+        node_id: str,
+        node_name: Optional[str],
+        prompt: str,
+    ) -> bool:
+        """Display prompt and get user decision"""
+        self.console.print(prompt)
+
+        from rich.prompt import Confirm
+
+        decision = Confirm.ask("Approve?")
+
+        self.console.print("")
+        return decision
+
+    def handle_description_output(
         self,
         node_id: str,
         node_name: Optional[str],
         description: Optional[str],
-        prompt: str,
-    ) -> bool:
-        """Display prompt and get user decision"""
+    ) -> None:
         display_name = node_name or node_id
 
         self.console.print(f"[bold blue]Manual Step ({display_name}):[/bold blue]")
@@ -84,15 +98,7 @@ class ConsoleNodeIOHandler(NodeIOHandler):
         if description and node_key not in self.displayed_descriptions:
             self.console.print(f"\n[italic]{description}[/italic]\n")
             self.displayed_descriptions.add(node_key)
-
-        self.console.print(prompt)
-
-        from rich.prompt import Confirm
-
-        decision = Confirm.ask("Approve?")
-
-        self.console.print("")
-        return decision
+        return None
 
     def handle_command_output(
         self,
@@ -221,12 +227,11 @@ created_at  = "{now.isoformat()}"
 
 # Example manual node - uncomment to use
 # [approve]
-# type        = "Manual"
-# prompt      = "Proceed with deployment?"
-# description   = \"\"\"This step requires manual approval before proceeding.
+# type         = "Manual"
+# prompt_after = "Proceed with deployment?"
+# description  = \"\"\"This step requires manual approval before proceeding.
 # Please review the changes and confirm.\"\"\"
 # depends_on  = []
-# skippable   = false
 # critical    = true
 
 # Example command node - uncomment to use
@@ -237,6 +242,7 @@ created_at  = "{now.isoformat()}"
 # depends_on   = []
 # timeout      = 300
 # name         = "Build step"
+# skip         = true
 
 # Example function node - uncomment to use
 # [notify]
@@ -303,6 +309,9 @@ def validate(
             console.print(f"  • Manual nodes: {manual_count}")
             console.print(f"  • Function nodes: {function_count}")
             console.print(f"  • Command nodes: {command_count}")
+
+            skipped_count = sum(1 for n in runbook.nodes.values() if n.skip)
+            console.print(f"  • Skipped nodes: {skipped_count}")
 
     except Exception as e:
         console.print(f"[bold red]Error:[/bold red] {str(e)}")
@@ -545,9 +554,9 @@ def _execute_nodes(
                 if choice == "r":
                     console.print("Retry not implemented in prototype")
                 elif choice == "s":
-                    if not node.skippable:
+                    if not node.critical:
                         console.print(
-                            "[bold red]Cannot skip non-skippable node[/bold red]"
+                            "[bold red]Cannot skip critical node[/bold red]"
                         )
                     else:
                         console.print("Skipping node")

@@ -19,8 +19,14 @@ class ProcessRunner(Protocol):
     """Command execution interface"""
 
     @abstractmethod
-    def run_command(self, command: str, timeout: int) -> tuple[int, str, str]:
-        """Run shell command and return exit code, stdout, stderr"""
+    def run_command(self, command: str, timeout: int, interactive: bool = False) -> tuple[int, str, str]:
+        """Run shell command and return exit code, stdout, stderr
+
+        Args:
+            command: The command to run
+            timeout: Timeout in seconds
+            interactive: Whether the command needs interactive input
+        """
         pass
 
 
@@ -128,13 +134,21 @@ class CommandOutputHandler(Protocol):
 class NodeIOHandler(Protocol):
     """Interface for handling node input/output"""
 
-    def handle_manual_prompt(
+    def handle_prompt(
+        self,
+        node_id: str,
+        node_name: Optional[str],
+        prompt: str,
+    ) -> bool:
+        """Handle manual node prompt, returns user decision (True/False)"""
+        pass
+
+    def handle_description_output(
         self,
         node_id: str,
         node_name: Optional[str],
         description: Optional[str],
-        prompt: str,
-    ) -> bool:
+    ) -> None:
         """Handle manual node prompt, returns user decision (True/False)"""
         pass
 

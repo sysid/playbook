@@ -1,10 +1,13 @@
 # src/playbook/infrastructure/parser.py
+import logging
 import tomllib  # Use tomllib instead of tomli
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Union
 
 from ..domain.models import Runbook, NodeType, ManualNode, FunctionNode, CommandNode
+
+logger = logging.getLogger(__name__)
 
 
 class RunbookParser:
@@ -37,6 +40,9 @@ class RunbookParser:
 
         # Create nodes
         nodes: Dict[str, Union[ManualNode, FunctionNode, CommandNode]] = {}
+        for node_id, node in nodes.items():
+            if node.critical and node.skip:
+                raise ValueError(f"Skipping critical node not allowed: {node_id}: {node.skip}")
 
         for node_id, node_data in data.items():
             if "type" not in node_data:
@@ -59,7 +65,6 @@ class RunbookParser:
             else:
                 raise ValueError(f"Unknown node type: {node_type}")
 
-        # Create runbook
         return Runbook(
             title=metadata["title"],
             description=metadata["description"],

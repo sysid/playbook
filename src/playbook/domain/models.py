@@ -36,13 +36,13 @@ class BaseNode(BaseModel):
     id: str
     type: NodeType
     depends_on: List[str] = Field(default_factory=list)
-    skippable: bool = False
     critical: bool = False
     name: Optional[str] = None
     description: Optional[str] = None
     timeout: int = 300  # Default timeout in seconds
-    prompt: str = "Continue?"
-    confirm: bool = True
+    prompt_before: str = ""
+    prompt_after: str = "Continue with the next step?"
+    skip: bool = False
 
 
 class ManualNode(BaseNode):
@@ -60,6 +60,7 @@ class FunctionNode(BaseNode):
 class CommandNode(BaseNode):
     type: Literal[NodeType.COMMAND] = NodeType.COMMAND
     command_name: str
+    interactive: bool = False
 
 
 # Replace Node class with RootModel
