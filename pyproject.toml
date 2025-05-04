@@ -1,6 +1,6 @@
 [project]
 name = "playbook"
-version = "0.1.1"
+version = "0.1.2"
 authors = [
   { name = "sysid", email = "sysid@gmx.de" },
 ]
@@ -40,8 +40,8 @@ dev = [
 playbook = "playbook.infrastructure.cli:main"
 
 [project.urls]
-"Homepage" = "https://github.com/yourusername/playbook"
-"Bug Tracker" = "https://github.com/yourusername/playbook/issues"
+"Homepage" = "https://github.com/sysid/playbook"
+"Bug Tracker" = "https://github.com/sysid/playbook/issues"
 
 [build-system]
 requires = ["setuptools"]
@@ -52,7 +52,7 @@ managed = true
 package = true
 
 [tool.bumpversion]
-current_version = "0.1.1"
+current_version = "0.1.2"
 parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)"
 serialize = ["{major}.{minor}.{patch}"]
 search = "{current_version}"
