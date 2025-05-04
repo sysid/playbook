@@ -47,6 +47,10 @@ format:  ## Format code with ruff
 # Building \
 BUILDING: ## ############################################################
 
+
+.PHONY: all
+all: clean build publish  ## all: build and publish
+
 .PHONY: build
 build: clean format  ## Build package
 	python -m build

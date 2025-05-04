@@ -1,6 +1,6 @@
 [project]
 name = "playbook"
-version = "0.1.4"
+version = "0.2.0"
 authors = [
   { name = "sysid", email = "sysid@gmx.de" },
 ]
@@ -52,7 +52,7 @@ managed = true
 package = true
 
 [tool.bumpversion]
-current_version = "0.1.4"
+current_version = "0.2.0"
 parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)"
 serialize = ["{major}.{minor}.{patch}"]
 search = "{current_version}"
