@@ -1,7 +1,12 @@
 # 🛠️ Playbook
 
-**Playbook** is a lightweight, extensible workflow engine for defining and executing **DAG-based workflows** using declarative **TOML files**.  
-It supports manual approvals, shell commands, and Python functions as workflow steps—making it ideal for operations automation, internal tooling, and orchestrated runbooks.
+> Playbooks are guardrails for humans
+
+**Playbook** encodes manual workflows into semi-automated processes which provide assistance, checkpoint and tools for a human operator.
+
+It reduces pressure and heat in critical situations by guiding along a proven and tested course of action.
+
+It supports manual approvals, shell commands, and Python functions as workflow steps — making it ideal for operations automation and orchestrated runbooks.
 
 <p align="center">
   <img src="doc/dag.png" alt="DAG" width="200"/>
@@ -24,17 +29,7 @@ It supports manual approvals, shell commands, and Python functions as workflow s
 Clone this repo and set up a virtual environment:
 
 ```bash
-git clone https://github.com/your-org/playbook.git
-cd playbook
-python -m venv .venv
-source .venv/bin/activate
-pip install -e .
-```
-
-Make the CLI available:
-```bash
-chmod +x src/playbook/infrastructure/cli.py
-ln -s "$(pwd)/src/playbook/infrastructure/cli.py" playbook
+pip install playbook
 ```
 
 Run with:
