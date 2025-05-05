@@ -5,16 +5,12 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="5a384825-87f7-4752-bb95-dcf8d7a51e56" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/runConfigurations/playbook_infrastructure_cli_run.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/complex.playbook.dot" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/complex.playbook.toml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/playbook/domain/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/playbook/domain/models.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/playbook/domain/ports.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/playbook/domain/ports.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/playbook/infrastructure/cli.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/playbook/infrastructure/cli.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/playbook/infrastructure/parser.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/playbook/infrastructure/parser.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/playbook/infrastructure/process.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/playbook/infrastructure/process.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/playbook/service/engine.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/playbook/service/engine.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_service/test_engine.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_service/test_engine.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -212,7 +208,7 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1746274703606</updated>
-      <workItem from="1746274704588" duration="36254000" />
+      <workItem from="1746274704588" duration="36904000" />
     </task>
     <servers />
   </component>
@@ -240,7 +236,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/playbook/service/engine.py</url>
-          <line>377</line>
+          <line>371</line>
           <option name="timeStamp" value="4" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">

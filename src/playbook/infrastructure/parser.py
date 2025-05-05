@@ -42,7 +42,9 @@ class RunbookParser:
         nodes: Dict[str, Union[ManualNode, FunctionNode, CommandNode]] = {}
         for node_id, node in nodes.items():
             if node.critical and node.skip:
-                raise ValueError(f"Skipping critical node not allowed: {node_id}: {node.skip}")
+                raise ValueError(
+                    f"Skipping critical node not allowed: {node_id}: {node.skip}"
+                )
 
         for node_id, node_data in data.items():
             if "type" not in node_data:

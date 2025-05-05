@@ -555,9 +555,7 @@ def _execute_nodes(
                     console.print("Retry not implemented in prototype")
                 elif choice == "s":
                     if not node.critical:
-                        console.print(
-                            "[bold red]Cannot skip critical node[/bold red]"
-                        )
+                        console.print("[bold red]Cannot skip critical node[/bold red]")
                     else:
                         console.print("Skipping node")
                         execution.status = NodeStatus.SKIPPED

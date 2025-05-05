@@ -250,21 +250,19 @@ class RunbookEngine:
 
         if node.skip:
             if node.critical:
-                raise ValueError(
-                    f"Node '{node_id}' is critical and cannot be skipped"
-                )
+                raise ValueError(f"Node '{node_id}' is critical and cannot be skipped")
             # Update execution record to mark it as skipped
             existing_execution.status = NodeStatus.SKIPPED
             existing_execution.end_time = self.clock.now()
-            existing_execution.result_text = "Node skipped as configured in workflow definition"
+            existing_execution.result_text = (
+                "Node skipped as configured in workflow definition"
+            )
             self.node_repo.update_execution(existing_execution)
 
             # If there's an IO handler, inform about the skip
             if self.io_handler:
                 self.io_handler.handle_description_output(
-                    node_id,
-                    node.name,
-                    f"Skipped node: {node.description or ''}"
+                    node_id, node.name, f"Skipped node: {node.description or ''}"
                 )
 
             return existing_execution.status, existing_execution
@@ -320,9 +318,7 @@ class RunbookEngine:
 
         if node.skip:
             if node.critical:
-                raise ValueError(
-                    f"Node '{node_id}' is critical and cannot be skipped"
-                )
+                raise ValueError(f"Node '{node_id}' is critical and cannot be skipped")
             execution = NodeExecution(
                 workflow_name=runbook.title,
                 run_id=run_info.run_id,
@@ -331,14 +327,12 @@ class RunbookEngine:
                 start_time=start_time,
                 end_time=self.clock.now(),  # End time is same as start for skipped nodes
                 status=NodeStatus.SKIPPED,
-                result_text="Node skipped as configured in workflow definition"
+                result_text="Node skipped as configured in workflow definition",
             )
             self.node_repo.create_execution(execution)
 
             self.io_handler.handle_description_output(
-                node_id,
-                node.name,
-                f"Skipped node: {node.description or ''}"
+                node_id, node.name, f"Skipped node: {node.description or ''}"
             )
 
             return execution.status, execution

@@ -10,7 +10,9 @@ from ..domain.ports import ProcessRunner
 class ShellProcessRunner(ProcessRunner):
     """Shell command execution adapter"""
 
-    def run_command(self, command: str, timeout: int, interactive: bool = False) -> Tuple[int, str, str]:
+    def run_command(
+        self, command: str, timeout: int, interactive: bool = False
+    ) -> Tuple[int, str, str]:
         """Run shell command and return exit code, stdout, stderr"""
         # Expand environment variables
         command = os.path.expandvars(command)
@@ -23,10 +25,10 @@ class ShellProcessRunner(ProcessRunner):
                 result = subprocess.run(
                     command,
                     shell=True,
-                    stdin=None,           # Use terminal's stdin
-                    stdout=None,          # Output goes to terminal
-                    stderr=None,          # Errors go to terminal
-                    timeout=timeout
+                    stdin=None,  # Use terminal's stdin
+                    stdout=None,  # Output goes to terminal
+                    stderr=None,  # Errors go to terminal
+                    timeout=timeout,
                 )
                 return result.returncode, "", ""
             else:
@@ -36,7 +38,7 @@ class ShellProcessRunner(ProcessRunner):
                     shell=True,
                     capture_output=True,  # Capture stdout/stderr
                     text=True,
-                    timeout=timeout
+                    timeout=timeout,
                 )
                 return result.returncode, result.stdout, result.stderr
 

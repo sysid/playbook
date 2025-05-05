@@ -62,13 +62,22 @@ class TestRunbookEngine:
             created_at=datetime.now(timezone.utc),
             nodes={
                 "A": ManualNode(
-                    id="A", type=NodeType.MANUAL, prompt_after="Approve A?", depends_on=[]
+                    id="A",
+                    type=NodeType.MANUAL,
+                    prompt_after="Approve A?",
+                    depends_on=[],
                 ),
                 "B": ManualNode(
-                    id="B", type=NodeType.MANUAL, prompt_after="Approve B?", depends_on=["A"]
+                    id="B",
+                    type=NodeType.MANUAL,
+                    prompt_after="Approve B?",
+                    depends_on=["A"],
                 ),
                 "C": ManualNode(
-                    id="C", type=NodeType.MANUAL, prompt_after="Approve C?", depends_on=["B"]
+                    id="C",
+                    type=NodeType.MANUAL,
+                    prompt_after="Approve C?",
+                    depends_on=["B"],
                 ),
             },
         )

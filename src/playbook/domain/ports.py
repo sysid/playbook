@@ -19,7 +19,9 @@ class ProcessRunner(Protocol):
     """Command execution interface"""
 
     @abstractmethod
-    def run_command(self, command: str, timeout: int, interactive: bool = False) -> tuple[int, str, str]:
+    def run_command(
+        self, command: str, timeout: int, interactive: bool = False
+    ) -> tuple[int, str, str]:
         """Run shell command and return exit code, stdout, stderr
 
         Args:
