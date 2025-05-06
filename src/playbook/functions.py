@@ -2,6 +2,7 @@
 """Built-in functions for playbook."""
 
 import logging
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -20,3 +21,12 @@ def notify(message: str) -> str:
     # Remove direct print - let the engine handle output
     # print(f"NOTIFICATION: {message}")
     return f"Notification sent: {message}"
+
+
+def sleep(seconds: int) -> str:
+    time.sleep(seconds)
+    return f"done"
+
+
+def throw() -> str:
+    raise Exception("Intentional exception for testing purposes")

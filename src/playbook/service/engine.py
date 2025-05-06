@@ -506,27 +506,40 @@ class RunbookEngine:
                 else None
             )
             execution.end_time = end_time
-            execution.status = NodeStatus.OK if exit_code == 0 else NodeStatus.NOK
             execution.exit_code = exit_code
             execution.stdout = stdout
             execution.stderr = stderr
             execution.duration_ms = duration_ms
 
-            # No output to display for interactive commands, since stdout/stderr were connected to terminal
-            if not node.interactive and self.io_handler and (stdout or stderr):
-                self.io_handler.handle_command_output(
-                    node.id, node.name, node.description, stdout, stderr
-                )
-            if node.prompt_after == "":  # No prompt_after confirmation
-                return execution
+            # Determine node status based on exit code
+            # Only show prompt_after if the command succeeded
+            if exit_code == 0:
+                execution.status = NodeStatus.OK
 
-            if not self._handle_after_confirmation(node):
+                # No output to display for interactive commands, since stdout/stderr were connected to terminal
+                if not node.interactive and self.io_handler and (stdout or stderr):
+                    self.io_handler.handle_command_output(
+                        node.id, node.name, node.description, stdout, stderr
+                    )
+
+                # Only ask for prompt_after confirmation if the command succeeded
+                if node.prompt_after != "":
+                    if not self._handle_after_confirmation(node):
+                        execution.status = NodeStatus.NOK
+                        execution.operator_decision = "rejected"
+                        execution.end_time = self.clock.now()
+                        return execution
+                    execution.operator_decision = "approved"
+            else:
+                # Command failed, mark as NOK without asking for confirmation
                 execution.status = NodeStatus.NOK
-                execution.operator_decision = "rejected"
-                execution.end_time = self.clock.now()
-                return execution
 
-            execution.operator_decision = "approved"
+                # Display stderr if available
+                if self.io_handler and stderr:
+                    self.io_handler.handle_command_output(
+                        node.id, node.name, node.description, stdout, stderr
+                    )
+
             return execution
 
         except Exception as e:
