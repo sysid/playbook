@@ -39,7 +39,6 @@ class BaseNode(BaseModel):
     critical: bool = False
     name: Optional[str] = None
     description: Optional[str] = None
-    timeout: int = 300  # Default timeout in seconds
     prompt_before: str = ""
     prompt_after: str = "Continue with the next step?"
     skip: bool = False
@@ -47,6 +46,9 @@ class BaseNode(BaseModel):
 
 class ManualNode(BaseNode):
     type: Literal[NodeType.MANUAL] = NodeType.MANUAL
+    timeout: int = 300  # Default timeout in seconds
+
+    model_config = {"extra": "forbid"}
 
 
 class FunctionNode(BaseNode):
@@ -56,11 +58,16 @@ class FunctionNode(BaseNode):
         default_factory=dict
     )
 
+    model_config = {"extra": "forbid"}
+
 
 class CommandNode(BaseNode):
     type: Literal[NodeType.COMMAND] = NodeType.COMMAND
     command_name: str
     interactive: bool = False
+    timeout: int = 300  # Default timeout in seconds
+
+    model_config = {"extra": "forbid"}
 
 
 # Replace Node class with RootModel

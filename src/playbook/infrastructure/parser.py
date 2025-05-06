@@ -5,6 +5,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Union
 
+from pydantic import ValidationError
+
 from ..domain.models import Runbook, NodeType, ManualNode, FunctionNode, CommandNode
 
 logger = logging.getLogger(__name__)
@@ -58,14 +60,26 @@ class RunbookParser:
             # Create appropriate node type
             node_type = node_data["type"]
 
-            if node_type == NodeType.MANUAL.value:
-                nodes[node_id] = ManualNode(**node_data)
-            elif node_type == NodeType.FUNCTION.value:
-                nodes[node_id] = FunctionNode(**node_data)
-            elif node_type == NodeType.COMMAND.value:
-                nodes[node_id] = CommandNode(**node_data)
-            else:
-                raise ValueError(f"Unknown node type: {node_type}")
+            try:
+                if node_type == NodeType.MANUAL.value:
+                    nodes[node_id] = ManualNode.model_validate(node_data)
+                elif node_type == NodeType.FUNCTION.value:
+                    nodes[node_id] = FunctionNode.model_validate(node_data)
+                elif node_type == NodeType.COMMAND.value:
+                    nodes[node_id] = CommandNode.model_validate(node_data)
+                else:
+                    raise ValueError(f"Unknown node type: {node_type}")
+            except ValidationError as e:
+                # Convert Pydantic validation errors to user-friendly messages
+                error_messages = []
+                for error in e.errors():
+                    if error["type"] == "extra_forbidden":
+                        field = error["loc"][0]
+                        error_messages.append(f"Undefined field '{field}' for node type '{node_type}'")
+                    else:
+                        error_messages.append(f"{error['msg']} at {'.'.join(str(loc) for loc in error['loc'])}")
+
+                raise ValueError(f"Error validating node '{node_id}': {'; '.join(error_messages)}")
 
         return Runbook(
             title=metadata["title"],

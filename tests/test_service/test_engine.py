@@ -101,14 +101,20 @@ class TestRunbookEngine:
                 "A": ManualNode(
                     id="A",
                     type=NodeType.MANUAL,
-                    prompt="Approve A?",
+                    prompt_after="Approve A?",
                     depends_on=["C"],  # Creates a cycle
                 ),
                 "B": ManualNode(
-                    id="B", type=NodeType.MANUAL, prompt="Approve B?", depends_on=["A"]
+                    id="B",
+                    type=NodeType.MANUAL,
+                    prompt_after="Approve B?",
+                    depends_on=["A"]
                 ),
                 "C": ManualNode(
-                    id="C", type=NodeType.MANUAL, prompt="Approve C?", depends_on=["B"]
+                    id="C",
+                    type=NodeType.MANUAL,
+                    prompt_after="Approve C?",
+                    depends_on=["B"]
                 ),
             },
         )
@@ -132,7 +138,7 @@ class TestRunbookEngine:
                 "A": ManualNode(
                     id="A",
                     type=NodeType.MANUAL,
-                    prompt="Approve A?",
+                    prompt_after="Approve A?",
                     depends_on=["A"],  # Self-loop
                 )
             },
@@ -157,7 +163,7 @@ class TestRunbookEngine:
                 "A": ManualNode(
                     id="A",
                     type=NodeType.MANUAL,
-                    prompt="Approve A?",
+                    prompt_after="Approve A?",
                     depends_on=["Z"],  # Z doesn't exist
                 )
             },
@@ -178,13 +184,22 @@ class TestRunbookEngine:
             created_at=datetime.now(timezone.utc),
             nodes={
                 "A": ManualNode(
-                    id="A", type=NodeType.MANUAL, prompt="Approve A?", depends_on=[]
+                    id="A",
+                    type=NodeType.MANUAL,
+                    prompt_after="Approve A?",
+                    depends_on=[]
                 ),
                 "B": ManualNode(
-                    id="B", type=NodeType.MANUAL, prompt="Approve B?", depends_on=["A"]
+                    id="B",
+                    type=NodeType.MANUAL,
+                    prompt_after="Approve B?",
+                    depends_on=["A"]
                 ),
                 "C": ManualNode(
-                    id="C", type=NodeType.MANUAL, prompt="Approve C?", depends_on=["B"]
+                    id="C",
+                    type=NodeType.MANUAL,
+                    prompt_after="Approve C?",
+                    depends_on=["B"]
                 ),
             },
         )
@@ -208,18 +223,27 @@ class TestRunbookEngine:
             created_at=datetime.now(timezone.utc),
             nodes={
                 "A": ManualNode(
-                    id="A", type=NodeType.MANUAL, prompt="Approve A?", depends_on=[]
+                    id="A",
+                    type=NodeType.MANUAL,
+                    prompt_after="Approve A?",
+                    depends_on=[]
                 ),
                 "B": ManualNode(
-                    id="B", type=NodeType.MANUAL, prompt="Approve B?", depends_on=["A"]
+                    id="B",
+                    type=NodeType.MANUAL,
+                    prompt_after="Approve B?",
+                    depends_on=["A"]
                 ),
                 "C": ManualNode(
-                    id="C", type=NodeType.MANUAL, prompt="Approve C?", depends_on=["A"]
+                    id="C",
+                    type=NodeType.MANUAL,
+                    prompt_after="Approve C?",
+                    depends_on=["A"]
                 ),
                 "D": ManualNode(
                     id="D",
                     type=NodeType.MANUAL,
-                    prompt="Approve D?",
+                    prompt_after="Approve D?",
                     depends_on=["B", "C"],
                 ),
             },
@@ -246,27 +270,39 @@ class TestRunbookEngine:
             created_at=datetime.now(timezone.utc),
             nodes={
                 "A": ManualNode(
-                    id="A", type=NodeType.MANUAL, prompt="Approve A?", depends_on=[]
+                    id="A",
+                    type=NodeType.MANUAL,
+                    prompt_after="Approve A?",
+                    depends_on=[]
                 ),
                 "B": ManualNode(
-                    id="B", type=NodeType.MANUAL, prompt="Approve B?", depends_on=["A"]
+                    id="B",
+                    type=NodeType.MANUAL,
+                    prompt_after="Approve B?",
+                    depends_on=["A"]
                 ),
                 "C": ManualNode(
-                    id="C", type=NodeType.MANUAL, prompt="Approve C?", depends_on=["A"]
+                    id="C",
+                    type=NodeType.MANUAL,
+                    prompt_after="Approve C?",
+                    depends_on=["A"]
                 ),
                 "D": ManualNode(
                     id="D",
                     type=NodeType.MANUAL,
-                    prompt="Approve D?",
+                    prompt_after="Approve D?",
                     depends_on=["B", "C"],
                 ),
                 "E": ManualNode(
-                    id="E", type=NodeType.MANUAL, prompt="Approve E?", depends_on=["B"]
+                    id="E",
+                    type=NodeType.MANUAL,
+                    prompt_after="Approve E?",
+                    depends_on=["B"]
                 ),
                 "F": ManualNode(
                     id="F",
                     type=NodeType.MANUAL,
-                    prompt="Approve F?",
+                    prompt_after="Approve F?",
                     depends_on=["C", "E"],
                 ),
             },
@@ -297,11 +333,14 @@ class TestRunbookEngine:
                 "A": ManualNode(
                     id="A",
                     type=NodeType.MANUAL,
-                    prompt="Approve A?",
+                    prompt_after="Approve A?",
                     depends_on=["B"],  # Creates a cycle
                 ),
                 "B": ManualNode(
-                    id="B", type=NodeType.MANUAL, prompt="Approve B?", depends_on=["A"]
+                    id="B",
+                    type=NodeType.MANUAL,
+                    prompt_after="Approve B?",
+                    depends_on=["A"]
                 ),
             },
         )
@@ -325,7 +364,7 @@ class TestRunbookEngine:
                 "A": ManualNode(
                     id="A",
                     type=NodeType.MANUAL,
-                    prompt="Approve A?",
+                    prompt_after="Approve A?",
                     depends_on=["Z"],  # Z doesn't exist
                 )
             },
@@ -346,10 +385,16 @@ class TestRunbookEngine:
             created_at=datetime.now(timezone.utc),
             nodes={
                 "A": ManualNode(
-                    id="A", type=NodeType.MANUAL, prompt="Approve A?", depends_on=[]
+                    id="A",
+                    type=NodeType.MANUAL,
+                    prompt_after="Approve A?",
+                    depends_on=[]
                 ),
                 "B": ManualNode(
-                    id="B", type=NodeType.MANUAL, prompt="Approve B?", depends_on=["A"]
+                    id="B",
+                    type=NodeType.MANUAL,
+                    prompt_after="Approve B?",
+                    depends_on=["A"]
                 ),
             },
         )
@@ -371,10 +416,16 @@ class TestRunbookEngine:
             created_at=datetime.now(timezone.utc),
             nodes={
                 "A": ManualNode(
-                    id="A", type=NodeType.MANUAL, prompt="Approve A?", depends_on=["B"]
+                    id="A",
+                    type=NodeType.MANUAL,
+                    prompt_after="Approve A?",
+                    depends_on=["B"]
                 ),
                 "B": ManualNode(
-                    id="B", type=NodeType.MANUAL, prompt="Approve B?", depends_on=["A"]
+                    id="B",
+                    type=NodeType.MANUAL,
+                    prompt_after="Approve B?",
+                    depends_on=["A"]
                 ),
             },
         )
@@ -397,12 +448,15 @@ class TestRunbookEngine:
             created_at=datetime.now(timezone.utc),
             nodes={
                 "A": ManualNode(
-                    id="A", type=NodeType.MANUAL, prompt="Approve A?", depends_on=[]
+                    id="A",
+                    type=NodeType.MANUAL,
+                    prompt_after="Approve A?",
+                    depends_on=[]
                 ),
                 "B": ManualNode(
                     id="B",
                     type=NodeType.MANUAL,
-                    prompt="Approve B?",
+                    prompt_after="Approve B?",
                     depends_on=["Z"],  # Z doesn't exist
                 ),
             },
@@ -429,7 +483,10 @@ class TestRunbookEngine:
             created_at=datetime.now(timezone.utc),
             nodes={
                 "A": ManualNode(
-                    id="A", type=NodeType.MANUAL, prompt="Approve A?", depends_on=[]
+                    id="A",
+                    type=NodeType.MANUAL,
+                    prompt_after="Approve A?",
+                    depends_on=[]
                 )
             },
         )
@@ -456,10 +513,16 @@ class TestRunbookEngine:
             created_at=datetime.now(timezone.utc),
             nodes={
                 "A": ManualNode(
-                    id="A", type=NodeType.MANUAL, prompt="Approve A?", depends_on=["B"]
+                    id="A",
+                    type=NodeType.MANUAL,
+                    prompt_after="Approve A?",
+                    depends_on=["B"]
                 ),
                 "B": ManualNode(
-                    id="B", type=NodeType.MANUAL, prompt="Approve B?", depends_on=["A"]
+                    id="B",
+                    type=NodeType.MANUAL,
+                    prompt_after="Approve B?",
+                    depends_on=["A"]
                 ),
             },
         )
@@ -481,10 +544,16 @@ class TestRunbookEngine:
             created_at=datetime.now(timezone.utc),
             nodes={
                 "A": ManualNode(
-                    id="A", type=NodeType.MANUAL, prompt="Approve A?", depends_on=[]
+                    id="A",
+                    type=NodeType.MANUAL,
+                    prompt_after="Approve A?",
+                    depends_on=[]
                 ),
                 "B": ManualNode(
-                    id="B", type=NodeType.MANUAL, prompt="Approve B?", depends_on=["A"]
+                    id="B",
+                    type=NodeType.MANUAL,
+                    prompt_after="Approve B?",
+                    depends_on=["A"]
                 ),
             },
         )
@@ -544,12 +613,15 @@ class TestRunbookEngine:
                 "A": ManualNode(
                     id="A",
                     type=NodeType.MANUAL,
-                    prompt="Approve A?",
+                    prompt_after="Approve A?",
                     depends_on=[],
                     critical=True,  # Critical node
                 ),
                 "B": ManualNode(
-                    id="B", type=NodeType.MANUAL, prompt="Approve B?", depends_on=["A"]
+                    id="B",
+                    type=NodeType.MANUAL,
+                    prompt_after="Approve B?",
+                    depends_on=["A"]
                 ),
             },
         )
@@ -601,12 +673,15 @@ class TestRunbookEngine:
                 "A": ManualNode(
                     id="A",
                     type=NodeType.MANUAL,
-                    prompt="Approve A?",
+                    prompt_after="Approve A?",
                     depends_on=[],
                     critical=False,  # Non-critical node
                 ),
                 "B": ManualNode(
-                    id="B", type=NodeType.MANUAL, prompt="Approve B?", depends_on=["A"]
+                    id="B",
+                    type=NodeType.MANUAL,
+                    prompt_after="Approve B?",
+                    depends_on=["A"]
                 ),
             },
         )
@@ -664,10 +739,16 @@ class TestRunbookEngine:
             created_at=datetime.now(timezone.utc),
             nodes={
                 "A": ManualNode(
-                    id="A", type=NodeType.MANUAL, prompt="Approve A?", depends_on=[]
+                    id="A",
+                    type=NodeType.MANUAL,
+                    prompt_after="Approve A?",
+                    depends_on=[]
                 ),
                 "B": ManualNode(
-                    id="B", type=NodeType.MANUAL, prompt="Approve B?", depends_on=["A"]
+                    id="B",
+                    type=NodeType.MANUAL,
+                    prompt_after="Approve B?",
+                    depends_on=["A"]
                 ),
             },
         )
