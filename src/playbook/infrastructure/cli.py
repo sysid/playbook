@@ -8,7 +8,7 @@ from typing import Optional, List
 import typer
 from rich.console import Console
 from rich.logging import RichHandler
-from rich.progress import Progress
+from rich.progress import Progress, TextColumn, BarColumn, TimeElapsedColumn
 from rich.prompt import Confirm, Prompt
 from rich.table import Table
 
@@ -62,10 +62,16 @@ class ConsoleNodeIOHandler(NodeIOHandler):
         self.console = console
         self.displayed_descriptions = set()  # Track which nodes have shown descriptions
         self.current_node_id = None  # Track which node is currently executing
+        self.progress = progress
 
     def set_current_node(self, node_id: str):
         """Set the current node being processed"""
         self.current_node_id = node_id
+
+    def display_node_header(self, node_id: str, node_name: Optional[str], node_type: str) -> None:
+        """Display consistent node header for all node types"""
+        display_name = node_name or node_id
+        self.console.print(f"[bold blue]{node_type} Step ({display_name}):[/bold blue]")
 
     def handle_prompt(
         self,
@@ -89,9 +95,8 @@ class ConsoleNodeIOHandler(NodeIOHandler):
         node_name: Optional[str],
         description: Optional[str],
     ) -> None:
-        display_name = node_name or node_id
-
-        self.console.print(f"[bold blue]Manual Step ({display_name}):[/bold blue]")
+        """Display consistent header for manual nodes"""
+        # self.display_node_header(node_id, node_name, "Manual")
 
         # Print description if available and not already shown
         node_key = f"{node_id}-description"
@@ -108,29 +113,20 @@ class ConsoleNodeIOHandler(NodeIOHandler):
         stdout: str,
         stderr: str,
     ) -> None:
-        """Display command output"""
-        display_name = node_name or node_id
-        node_key = f"{node_id}-description"
-
+        """Display command output with consistent header"""
         # Only process if there's output to show
         if not (stdout.strip() or stderr.strip()):
             return
 
-        # Print description if available and not already shown
-        if description and node_key not in self.displayed_descriptions:
-            self.console.print(f"\n[italic]{description}[/italic]\n")
-            self.displayed_descriptions.add(node_key)
+        # We're not displaying the header here as it's already displayed at node start
+        # Just show the command output
 
         if stdout.strip():
-            self.console.print(
-                f"[bold green]Command Output ({display_name}):[/bold green]"
-            )
+            self.console.print(f"[bold green]Command Output:[/bold green]")
             self.console.print(stdout)
 
         if stderr.strip():
-            self.console.print(
-                f"[bold yellow]Command Error ({display_name}):[/bold yellow]"
-            )
+            self.console.print(f"[bold yellow]Command Error:[/bold yellow]")
             self.console.print(stderr)
 
         self.console.print("")
@@ -142,21 +138,16 @@ class ConsoleNodeIOHandler(NodeIOHandler):
         description: Optional[str],
         result: str,
     ) -> None:
-        """Display function output"""
-        display_name = node_name or node_id
-        node_key = f"{node_id}-description"
-
+        """Display function output with consistent header"""
         # Only process if there's output to show
         if not result.strip():
             return
 
-        # Print description if available and not already shown
-        if description and node_key not in self.displayed_descriptions:
-            self.console.print(f"\n[italic]{description}[/italic]\n")
-            self.displayed_descriptions.add(node_key)
+        # We're not displaying the header here as it's already displayed at node start
+        # Just show the function output
 
         # Show output
-        self.console.print(f"[bold blue]Function Output ({display_name}):[/bold blue]")
+        self.console.print(f"[bold blue]Function Output:[/bold blue]")
         self.console.print(result)
 
         self.console.print("")
@@ -393,7 +384,13 @@ def _execute_workflow(
         runbook = parser.parse(str(file))
 
         # Create progress display and IO handler
-        progress = Progress()
+        progress = Progress(
+            TextColumn("[bold blue]{task.description}"),
+            BarColumn(),
+            "[progress.percentage]{task.percentage:>3.0f}%",
+            TimeElapsedColumn(),
+
+        )
         io_handler = ConsoleNodeIOHandler(console, progress)
         engine = get_engine(state_path, io_handler)
 
@@ -503,8 +500,9 @@ def _execute_nodes(
             # Update progress bar with current node
             progress.start()
             progress.update(task, description=f"Running {node_display_name}")
-            # Hide the progress bar during execution to prevent duplicate display
             progress.stop()
+            io_handler.display_node_header(node.id, node.name, node.type)
+            # Hide the progress bar during execution to prevent duplicate display
 
             # Check if this node has an existing execution record
             existing_execution = existing_executions_map.get(current_node_id)

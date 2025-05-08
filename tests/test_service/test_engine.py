@@ -108,13 +108,13 @@ class TestRunbookEngine:
                     id="B",
                     type=NodeType.MANUAL,
                     prompt_after="Approve B?",
-                    depends_on=["A"]
+                    depends_on=["A"],
                 ),
                 "C": ManualNode(
                     id="C",
                     type=NodeType.MANUAL,
                     prompt_after="Approve C?",
-                    depends_on=["B"]
+                    depends_on=["B"],
                 ),
             },
         )
@@ -187,19 +187,19 @@ class TestRunbookEngine:
                     id="A",
                     type=NodeType.MANUAL,
                     prompt_after="Approve A?",
-                    depends_on=[]
+                    depends_on=[],
                 ),
                 "B": ManualNode(
                     id="B",
                     type=NodeType.MANUAL,
                     prompt_after="Approve B?",
-                    depends_on=["A"]
+                    depends_on=["A"],
                 ),
                 "C": ManualNode(
                     id="C",
                     type=NodeType.MANUAL,
                     prompt_after="Approve C?",
-                    depends_on=["B"]
+                    depends_on=["B"],
                 ),
             },
         )
@@ -226,19 +226,19 @@ class TestRunbookEngine:
                     id="A",
                     type=NodeType.MANUAL,
                     prompt_after="Approve A?",
-                    depends_on=[]
+                    depends_on=[],
                 ),
                 "B": ManualNode(
                     id="B",
                     type=NodeType.MANUAL,
                     prompt_after="Approve B?",
-                    depends_on=["A"]
+                    depends_on=["A"],
                 ),
                 "C": ManualNode(
                     id="C",
                     type=NodeType.MANUAL,
                     prompt_after="Approve C?",
-                    depends_on=["A"]
+                    depends_on=["A"],
                 ),
                 "D": ManualNode(
                     id="D",
@@ -273,19 +273,19 @@ class TestRunbookEngine:
                     id="A",
                     type=NodeType.MANUAL,
                     prompt_after="Approve A?",
-                    depends_on=[]
+                    depends_on=[],
                 ),
                 "B": ManualNode(
                     id="B",
                     type=NodeType.MANUAL,
                     prompt_after="Approve B?",
-                    depends_on=["A"]
+                    depends_on=["A"],
                 ),
                 "C": ManualNode(
                     id="C",
                     type=NodeType.MANUAL,
                     prompt_after="Approve C?",
-                    depends_on=["A"]
+                    depends_on=["A"],
                 ),
                 "D": ManualNode(
                     id="D",
@@ -297,7 +297,7 @@ class TestRunbookEngine:
                     id="E",
                     type=NodeType.MANUAL,
                     prompt_after="Approve E?",
-                    depends_on=["B"]
+                    depends_on=["B"],
                 ),
                 "F": ManualNode(
                     id="F",
@@ -340,7 +340,7 @@ class TestRunbookEngine:
                     id="B",
                     type=NodeType.MANUAL,
                     prompt_after="Approve B?",
-                    depends_on=["A"]
+                    depends_on=["A"],
                 ),
             },
         )
@@ -388,13 +388,13 @@ class TestRunbookEngine:
                     id="A",
                     type=NodeType.MANUAL,
                     prompt_after="Approve A?",
-                    depends_on=[]
+                    depends_on=[],
                 ),
                 "B": ManualNode(
                     id="B",
                     type=NodeType.MANUAL,
                     prompt_after="Approve B?",
-                    depends_on=["A"]
+                    depends_on=["A"],
                 ),
             },
         )
@@ -419,13 +419,13 @@ class TestRunbookEngine:
                     id="A",
                     type=NodeType.MANUAL,
                     prompt_after="Approve A?",
-                    depends_on=["B"]
+                    depends_on=["B"],
                 ),
                 "B": ManualNode(
                     id="B",
                     type=NodeType.MANUAL,
                     prompt_after="Approve B?",
-                    depends_on=["A"]
+                    depends_on=["A"],
                 ),
             },
         )
@@ -451,7 +451,7 @@ class TestRunbookEngine:
                     id="A",
                     type=NodeType.MANUAL,
                     prompt_after="Approve A?",
-                    depends_on=[]
+                    depends_on=[],
                 ),
                 "B": ManualNode(
                     id="B",
@@ -486,7 +486,7 @@ class TestRunbookEngine:
                     id="A",
                     type=NodeType.MANUAL,
                     prompt_after="Approve A?",
-                    depends_on=[]
+                    depends_on=[],
                 )
             },
         )
@@ -516,13 +516,13 @@ class TestRunbookEngine:
                     id="A",
                     type=NodeType.MANUAL,
                     prompt_after="Approve A?",
-                    depends_on=["B"]
+                    depends_on=["B"],
                 ),
                 "B": ManualNode(
                     id="B",
                     type=NodeType.MANUAL,
                     prompt_after="Approve B?",
-                    depends_on=["A"]
+                    depends_on=["A"],
                 ),
             },
         )
@@ -547,13 +547,13 @@ class TestRunbookEngine:
                     id="A",
                     type=NodeType.MANUAL,
                     prompt_after="Approve A?",
-                    depends_on=[]
+                    depends_on=[],
                 ),
                 "B": ManualNode(
                     id="B",
                     type=NodeType.MANUAL,
                     prompt_after="Approve B?",
-                    depends_on=["A"]
+                    depends_on=["A"],
                 ),
             },
         )
@@ -621,7 +621,7 @@ class TestRunbookEngine:
                     id="B",
                     type=NodeType.MANUAL,
                     prompt_after="Approve B?",
-                    depends_on=["A"]
+                    depends_on=["A"],
                 ),
             },
         )
@@ -681,7 +681,7 @@ class TestRunbookEngine:
                     id="B",
                     type=NodeType.MANUAL,
                     prompt_after="Approve B?",
-                    depends_on=["A"]
+                    depends_on=["A"],
                 ),
             },
         )
@@ -742,13 +742,13 @@ class TestRunbookEngine:
                     id="A",
                     type=NodeType.MANUAL,
                     prompt_after="Approve A?",
-                    depends_on=[]
+                    depends_on=[],
                 ),
                 "B": ManualNode(
                     id="B",
                     type=NodeType.MANUAL,
                     prompt_after="Approve B?",
-                    depends_on=["A"]
+                    depends_on=["A"],
                 ),
             },
         )

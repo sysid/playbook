@@ -75,11 +75,17 @@ class RunbookParser:
                 for error in e.errors():
                     if error["type"] == "extra_forbidden":
                         field = error["loc"][0]
-                        error_messages.append(f"Undefined field '{field}' for node type '{node_type}'")
+                        error_messages.append(
+                            f"Undefined field '{field}' for node type '{node_type}'"
+                        )
                     else:
-                        error_messages.append(f"{error['msg']} at {'.'.join(str(loc) for loc in error['loc'])}")
+                        error_messages.append(
+                            f"{error['msg']} at {'.'.join(str(loc) for loc in error['loc'])}"
+                        )
 
-                raise ValueError(f"Error validating node '{node_id}': {'; '.join(error_messages)}")
+                raise ValueError(
+                    f"Error validating node '{node_id}': {'; '.join(error_messages)}"
+                )
 
         return Runbook(
             title=metadata["title"],
