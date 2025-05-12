@@ -68,7 +68,9 @@ class ConsoleNodeIOHandler(NodeIOHandler):
         """Set the current node being processed"""
         self.current_node_id = node_id
 
-    def display_node_header(self, node_id: str, node_name: Optional[str], node_type: str) -> None:
+    def display_node_header(
+        self, node_id: str, node_name: Optional[str], node_type: str
+    ) -> None:
         """Display consistent node header for all node types"""
         display_name = node_name or node_id
         self.console.print(f"[bold blue]{node_type} Step ({display_name}):[/bold blue]")
@@ -389,7 +391,6 @@ def _execute_workflow(
             BarColumn(),
             "[progress.percentage]{task.percentage:>3.0f}%",
             TimeElapsedColumn(),
-
         )
         io_handler = ConsoleNodeIOHandler(console, progress)
         engine = get_engine(state_path, io_handler)
@@ -499,9 +500,10 @@ def _execute_nodes(
 
             # Update progress bar with current node
             progress.start()
-            progress.update(task, description=f"Running {node_display_name}")
+            progress.update(task, description=f"{node_display_name}")
             progress.stop()
-            io_handler.display_node_header(node.id, node.name, node.type)
+            # noinspection PyTypeChecker
+            io_handler.display_node_header(node.id, node.name, node.type.value)
             # Hide the progress bar during execution to prevent duplicate display
 
             # Check if this node has an existing execution record
