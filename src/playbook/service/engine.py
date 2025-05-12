@@ -100,26 +100,48 @@ class RunbookEngine:
         return False
 
     def _get_execution_order(self, runbook: Runbook) -> List[str]:
-        """Calculate topological sort of nodes"""
-        visited = set()
-        temp = set()
-        order = []
+        """Calculate topological sort of nodes
 
-        def visit(node_id):
+        Time Complexity: O(V + E) where V is the number of nodes and E is the number of edges (dependencies)
+        Space Complexity: O(V) for the sets and recursion stack
+        Correctness: If a valid topological order exists (i.e., the graph is a DAG), this algorithm will find it
+        """
+
+        # objects are shared across all calls to visit, both direct and recursive
+        # only one set of visited, temp, and order: shared state
+        #  closures capture variables by reference, not by value: This means that the visit function doesn't just see
+        #  the values at the time it was defined. It can see updates to these variables made by any call to visit
+        visited = set()  # Nodes that have been fully processed
+        temp = set()  # Nodes currently being processed (used for cycle detection)
+        order = []  # Final topologically sorted list of nodes
+
+        def visit(node_id):  # Inner function (closure)
+            # Access to visited, temp, and order via closure
+            # If node is in temp set, we've found a cycle (node depends on itself)
             if node_id in temp:
                 raise ValueError(f"Cycle detected at node '{node_id}'")
+
+            # If node is already visited, we've already processed this branch
             if node_id in visited:
                 return
 
+            # Mark node as "in progress" by adding to temp set
             temp.add(node_id)
 
+            # Recursively visit all dependencies first
             for dep in runbook.nodes[node_id].depends_on:
                 visit(dep)
 
+            # Mark node as no longer in progress
             temp.remove(node_id)
+
+            # Mark node as fully processed
             visited.add(node_id)
+
+            # Add node to the result list (only after all its dependencies)
             order.append(node_id)
 
+        # Visit all nodes to ensure we process all nodes, even disconnected ones
         for node_id in runbook.nodes:
             if node_id not in visited:
                 visit(node_id)
