@@ -40,7 +40,7 @@ class BaseNode(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     prompt_before: str = ""
-    prompt_after: str = "Continue with the next step?"
+    prompt_after: str = "Continue with the next step?"  # "" for no prompt
     skip: bool = False
 
 

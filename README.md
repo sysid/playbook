@@ -35,7 +35,7 @@ pip install playbook
 Run with:
 
 ```bash
-./playbook --help
+playbook --help
 ```
 
 
@@ -68,12 +68,12 @@ Each node is a separate TOML table. You define:
 
 ```toml
 [approve]
-type        = "Manual"
-prompt      = "Proceed with deployment?"
-description = """This step requires manual approval."""
-depends_on  = ["setup"]
-skippable   = false
-critical    = true
+type         = "Manual"
+prompt_after = "Proceed with deployment?"
+description  = """This step requires manual approval."""
+depends_on   = ["setup"]
+skip         = false
+critical     = true
 ```
 
 #### Command Node
@@ -91,11 +91,11 @@ timeout      = 300
 
 ```toml
 [notify]
-type           = "Function"
-function_name  = "playbook.functions.notify"
+type            = "Function"
+function_name   = "playbook.functions.notify"
 function_params = { message = "Deployment complete" }
-description    = "Notify stakeholders"
-depends_on     = ["build", "tests"]
+description     = "Notify stakeholders"
+depends_on      = ["build", "tests"]
 ```
 
 ### Details and Specification
@@ -104,36 +104,42 @@ More info: [DAG.md](doc/DAG.md)
 
 ## 🧑‍💻 CLI Usage
 
+### Create a new runbook
+
+```bash
+playbook create --title "My Workflow" --author "Your Name"
+```
+
 ### Validate a runbook
 
 ```bash
-./playbook validate path/to/runbook.playbook.toml
+playbook validate path/to/runbook.playbook.toml
 ```
 
 ### Execute a workflow
 
 ```bash
-./playbook run path/to/runbook.playbook.toml
+playbook run path/to/runbook.playbook.toml
 ```
 
 ### Resume a failed workflow
 
 ```bash
-./playbook resume path/to/runbook.playbook.toml 42
+playbook resume path/to/runbook.playbook.toml 42
 ```
 
 ### Export DAG to Graphviz
 
 ```bash
-./playbook export-dot path/to/runbook.playbook.toml --output dag.dot
+playbook export-dot path/to/runbook.playbook.toml --output dag.dot
 dot -Tpng dag.dot -o dag.png
 ```
 
 ### Show run statistics
 
 ```bash
-./playbook info
-./playbook show "Example Workflow"
+playbook info
+playbook show "Example Workflow"
 ```
 
 
