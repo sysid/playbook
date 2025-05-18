@@ -319,8 +319,8 @@ type         = "{node['type']}"
 
             template += node_section
 
-    # Add example nodes as comments if no nodes were added
-    if "Do you want to add manual nodes to your runbook?" not in template and "[" not in template[template.find("\n"):]:
+    # Add example nodes as comments if no manual nodes were added
+    if not any(node["type"] == "Manual" for node in nodes):
         template += """
 # Example manual node - uncomment to use
 # [approve]
