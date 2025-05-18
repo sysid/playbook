@@ -6,9 +6,8 @@
   <component name="ChangeListManager">
     <list default="true" id="5a384825-87f7-4752-bb95-dcf8d7a51e56" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/spec.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/playbook/domain/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/playbook/domain/models.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/TODO.md" beforeDir="false" afterPath="$PROJECT_DIR$/TODO.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/playbook/infrastructure/cli.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/playbook/infrastructure/cli.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -30,39 +29,39 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;Python tests.Python tests for test_engine.TestRunbookEngine.test_has_cycles_whenNoCyclesExist_thenReturnsFalse.executor&quot;: &quot;Run&quot;,
-    &quot;Python tests.Python tests for test_engine.TestRunbookEngine.test_has_cycles_whenNonExistentDependency_thenRaisesKeyError.executor&quot;: &quot;Run&quot;,
-    &quot;Python tests.Python tests for test_engine.TestRunbookEngine.test_resume_node_execution_whenManualNode_thenExecutesManualNode.executor&quot;: &quot;Run&quot;,
-    &quot;Python tests.Python tests for test_engine.TestRunbookEngine.test_update_run_status_whenAllNodesOK_thenRunStatusOK.executor&quot;: &quot;Run&quot;,
-    &quot;Python tests.Python tests for test_engine.TestRunbookEngine.test_update_run_status_whenCriticalNodeFails_thenRunStatusNOK.executor&quot;: &quot;Run&quot;,
-    &quot;Python tests.Python tests for test_engine.TestRunbookEngine.test_validate_whenNonExistentDependency_thenReturnsError.executor&quot;: &quot;Run&quot;,
-    &quot;Python tests.Python tests in test_engine.py.executor&quot;: &quot;Run&quot;,
-    &quot;Python.cli.executor&quot;: &quot;Run&quot;,
-    &quot;Python.playbook.infrastructure.cli experimenting.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.playbook.infrastructure.cli run.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.playbook.infrastructure.cli.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/Users/Q187392/dev/s/private/playbook&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;http.proxy&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "Python tests.Python tests for test_engine.TestRunbookEngine.test_has_cycles_whenNoCyclesExist_thenReturnsFalse.executor": "Run",
+    "Python tests.Python tests for test_engine.TestRunbookEngine.test_has_cycles_whenNonExistentDependency_thenRaisesKeyError.executor": "Run",
+    "Python tests.Python tests for test_engine.TestRunbookEngine.test_resume_node_execution_whenManualNode_thenExecutesManualNode.executor": "Run",
+    "Python tests.Python tests for test_engine.TestRunbookEngine.test_update_run_status_whenAllNodesOK_thenRunStatusOK.executor": "Run",
+    "Python tests.Python tests for test_engine.TestRunbookEngine.test_update_run_status_whenCriticalNodeFails_thenRunStatusNOK.executor": "Run",
+    "Python tests.Python tests for test_engine.TestRunbookEngine.test_validate_whenNonExistentDependency_thenReturnsError.executor": "Run",
+    "Python tests.Python tests in test_engine.py.executor": "Run",
+    "Python.cli.executor": "Run",
+    "Python.playbook.infrastructure.cli experimenting.executor": "Debug",
+    "Python.playbook.infrastructure.cli run.executor": "Debug",
+    "Python.playbook.infrastructure.cli.executor": "Run",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "git-widget-placeholder": "feat/create",
+    "last_opened_file_path": "/Users/Q187392/dev/s/private/playbook",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "http.proxy",
+    "vue.rearranger.settings.migration": "true"
   },
-  &quot;keyToStringList&quot;: {
-    &quot;com.intellij.ide.scratch.ScratchImplUtil$2/New Scratch File&quot;: [
-      &quot;JSON&quot;
+  "keyToStringList": {
+    "com.intellij.ide.scratch.ScratchImplUtil$2/New Scratch File": [
+      "JSON"
     ]
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/src/playbook/presentation/cli" />
@@ -219,7 +218,8 @@
       <workItem from="1746874381802" duration="3253000" />
       <workItem from="1747075329313" duration="2700000" />
       <workItem from="1747307443051" duration="395000" />
-      <workItem from="1747493060514" duration="692000" />
+      <workItem from="1747493060514" duration="1480000" />
+      <workItem from="1747585183236" duration="981000" />
     </task>
     <servers />
   </component>
@@ -242,7 +242,7 @@
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/playbook/infrastructure/cli.py</url>
-          <line>462</line>
+          <line>398</line>
           <option name="timeStamp" value="3" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
