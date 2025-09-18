@@ -423,7 +423,9 @@ def validate(
 def view_dag(
     file: Path = typer.Argument(..., help="Runbook file path"),
     keep_dot: bool = typer.Option(False, "--keep-dot", help="Also save DOT file"),
-    no_open: bool = typer.Option(False, "--no-open", help="Don't auto-open the PNG file"),
+    no_open: bool = typer.Option(
+        False, "--no-open", help="Don't auto-open the PNG file"
+    ),
 ):
     """View runbook DAG as PNG image"""
     parser = RunbookParser()
@@ -434,7 +436,9 @@ def view_dag(
         try:
             subprocess.run(["dot", "-V"], capture_output=True, check=True)
         except (subprocess.CalledProcessError, FileNotFoundError):
-            console.print("[bold red]Error:[/bold red] Graphviz 'dot' binary not found.")
+            console.print(
+                "[bold red]Error:[/bold red] Graphviz 'dot' binary not found."
+            )
             console.print("\n[yellow]To install Graphviz:[/yellow]")
             console.print("• macOS: [cyan]brew install graphviz[/cyan]")
             console.print("• Ubuntu/Debian: [cyan]sudo apt-get install graphviz[/cyan]")
@@ -466,7 +470,7 @@ def view_dag(
                 ["dot", "-Tpng", str(dot_file), "-o", str(png_file)],
                 capture_output=True,
                 text=True,
-                check=True
+                check=True,
             )
 
             # Open the PNG file unless disabled
@@ -482,12 +486,17 @@ def view_dag(
                         subprocess.run(["start", str(png_file)], shell=True, check=True)
                     else:
                         console.print(
-                            f"[yellow]Cannot auto-open on this platform. Please open manually: {png_file}[/yellow]")
+                            f"[yellow]Cannot auto-open on this platform. Please open manually: {png_file}[/yellow]"
+                        )
                 except subprocess.CalledProcessError:
-                    console.print(f"[yellow]Could not auto-open file. Please open manually: {png_file}[/yellow]")
+                    console.print(
+                        f"[yellow]Could not auto-open file. Please open manually: {png_file}[/yellow]"
+                    )
 
             # Show success messages
-            console.print(f"[bold green]DAG visualization saved: {png_file}[/bold green]")
+            console.print(
+                f"[bold green]DAG visualization saved: {png_file}[/bold green]"
+            )
             if keep_dot:
                 console.print(f"[bold green]DOT file saved: {dot_file}[/bold green]")
 
