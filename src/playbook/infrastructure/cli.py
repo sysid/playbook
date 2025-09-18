@@ -75,7 +75,7 @@ class ConsoleNodeIOHandler(NodeIOHandler):
     ) -> None:
         """Display consistent node header for all node types"""
         display_name = node_name or node_id
-        self.console.print(f"[bold blue]{node_type} Step ({display_name}):[/bold blue]")
+        self.console.print(f"[dim]{node_type} Step ({display_name}):[/dim]")
 
     def handle_prompt(
         self,
@@ -675,6 +675,10 @@ def _execute_nodes(
 
             # Set the current node in the IO handler
             io_handler.set_current_node(current_node_id)
+
+            # Add empty lines before each node
+            console.print()
+            console.print()
 
             # Update progress bar with current node
             progress.start()
