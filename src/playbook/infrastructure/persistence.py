@@ -333,3 +333,38 @@ class SQLiteNodeExecutionRepository(SQLiteRepository, NodeExecutionRepository):
                 )
 
             return executions
+
+    def get_latest_execution_attempt(self, workflow_name: str, run_id: int, node_id: str) -> Optional[NodeExecution]:
+        """Get the latest execution attempt for a specific node"""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute(
+                """
+                SELECT * FROM executions
+                WHERE workflow_name = ? AND run_id = ? AND node_id = ?
+                ORDER BY attempt DESC
+                LIMIT 1
+                """,
+                (workflow_name, run_id, node_id),
+            )
+
+            row = cursor.fetchone()
+            if not row:
+                return None
+
+            return NodeExecution(
+                workflow_name=row["workflow_name"],
+                run_id=row["run_id"],
+                node_id=row["node_id"],
+                attempt=row["attempt"],
+                start_time=self._str_to_datetime(row["start_time"]),
+                end_time=self._str_to_datetime(row["end_time"]),
+                status=NodeStatus(row["status"]),
+                operator_decision=row["operator_decision"],
+                result_text=row["result_text"],
+                exit_code=row["exit_code"],
+                exception=row["exception"],
+                stdout=row["stdout"],
+                stderr=row["stderr"],
+                duration_ms=row["duration_ms"],
+            )

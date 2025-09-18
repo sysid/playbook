@@ -4,7 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Playbook** is a workflow engine for operations that executes runbooks defined as TOML-based DAGs. It supports manual approval steps, shell commands, and Python functions, making it ideal for operational workflows and orchestrated runbooks. The project follows hexagonal architecture principles.
+**Playbook** is a workflow engine for operations that executes runbooks defined as TOML-based DAGs.
+It supports manual approval steps, shell commands, and Python functions, making it ideal for
+operational workflows and orchestrated runbooks. The project follows hexagonal architecture
+principles.
 
 ## Development Commands
 
@@ -89,11 +92,19 @@ The codebase follows **Hexagonal Architecture** with clear separation:
 - Supports resuming failed workflows from specific nodes
 - Tracks node execution attempts, status, and results
 
+### Interactive Retry Functionality
+- **Retry failed nodes**: When a node fails, users can choose to retry, skip, or abort
+- **Attempt tracking**: Each retry gets a new attempt number with full state persistence
+- **Max retries**: `--max-retries` option limits retry attempts (default: 3)
+- **Critical nodes**: Cannot be skipped, only retried or abort workflow
+- **Non-critical nodes**: Can be skipped to continue workflow execution
+- **Progress preservation**: Retry loops maintain progress bar state correctly
+
 ### CLI Commands
 - `playbook create`: Interactive runbook creation
 - `playbook validate`: Validate runbook syntax and DAG structure
-- `playbook run`: Execute runbook from start
-- `playbook resume <run_id>`: Resume failed execution
+- `playbook run [--max-retries N]`: Execute runbook from start with optional retry limit
+- `playbook resume <run_id> [--max-retries N]`: Resume failed execution with optional retry limit
 - `playbook view-dag`: Generate and view DAG as PNG image (requires Graphviz)
   - Always saves PNG file in same directory as TOML file
   - `--keep-dot`: also save DOT file
@@ -101,11 +112,58 @@ The codebase follows **Hexagonal Architecture** with clear separation:
 - `playbook info`: Show execution statistics
 - `playbook show <workflow>`: Display run details
 
-## Testing Patterns
+## Testing & Coverage
 
-- Tests located in `tests/` directory
-- Uses pytest with coverage reporting
+### Test Structure
+- Tests located in `tests/` directory using pytest with coverage reporting
 - Configuration in `pyproject.toml` under `[tool.pytest.ini_options]`
+
+### Tested Functionality ✅
+**Core Engine & Business Logic** - Well tested with comprehensive coverage:
+- `src/playbook/service/engine.py` (73% coverage)
+  - DAG validation and cycle detection
+  - Workflow execution orchestration
+  - **Retry functionality**: `retry_node_execution()` method with attempt tracking
+  - Node execution with different types (Manual/Command/Function)
+  - Resume workflow capabilities
+  - Status management and error handling
+
+- `src/playbook/domain/ports.py` (71% coverage)
+  - Repository interfaces and abstractions
+  - **New retry interface**: `get_latest_execution_attempt()` method
+
+- `src/playbook/infrastructure/persistence.py` (52% coverage)
+  - SQLite execution tracking and state persistence
+  - **Retry persistence**: Latest execution attempt retrieval with proper isolation
+  - Run and node execution repository implementations
+
+### Untested Functionality ⚠️
+**Infrastructure & CLI** - Not covered by current test suite:
+- `src/playbook/infrastructure/cli.py` (0% coverage)
+  - Interactive retry prompts and user input handling
+  - CLI command implementations (run, resume, create, etc.)
+  - Progress bar integration and error display
+
+- `src/playbook/infrastructure/parser.py` (0% coverage)
+  - TOML runbook file parsing
+  - Configuration validation
+
+- `src/playbook/infrastructure/process.py` (0% coverage)
+  - Shell command execution
+  - Process management and output capture
+
+- Other infrastructure modules (0% coverage):
+  - `visualization.py`: Graphviz DAG generation
+  - `functions.py`: Python function loading
+  - `statistics.py`: Execution statistics
+  - `config.py`: Configuration management
+
+### Test Resources
+- `tests/resources/workflows/`: Real workflow examples for testing
+  - `retry_basic.playbook.toml`: Basic retry scenarios
+  - `critical_failure.playbook.toml`: Critical node failures
+  - `mixed_nodes.playbook.toml`: Different node types
+  - `parallel_dag.playbook.toml`: Parallel execution patterns
 
 ## Code Style
 
