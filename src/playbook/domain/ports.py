@@ -83,6 +83,13 @@ class NodeExecutionRepository(ABC):
         """Get all executions for a run"""
         pass
 
+    @abstractmethod
+    def get_latest_execution_attempt(
+        self, workflow_name: str, run_id: int, node_id: str
+    ) -> Optional[NodeExecution]:
+        """Get the latest execution attempt for a specific node"""
+        pass
+
 
 class StatisticsRepository(Protocol):
     """Interface for retrieving system statistics"""

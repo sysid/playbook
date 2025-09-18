@@ -1132,3 +1132,294 @@ class TestRunbookEngine:
         assert execution.attempt == 2
         assert execution.end_time is not None
         mock_dependencies["node_repo"].update_execution.assert_called_once()
+
+    def test_retry_node_execution_when_successful_retry_then_returns_success(
+        self, engine, mock_dependencies
+    ):
+        """Test that retry_node_execution handles successful retry"""
+        # Arrange
+        from playbook.domain.models import CommandNode
+
+        runbook = Runbook(
+            title="Test Workflow",
+            description="Test Description",
+            version="1.0",
+            author="Test Author",
+            created_at=datetime.now(timezone.utc),
+            nodes={
+                "test_node": CommandNode(
+                    id="test_node",
+                    type=NodeType.COMMAND,
+                    command_name="test command",
+                    depends_on=[],
+                )
+            },
+        )
+
+        run_info = RunInfo(
+            workflow_name="Test Workflow",
+            run_id=123,
+            start_time=datetime.now(timezone.utc),
+            status=RunStatus.RUNNING,
+            trigger=TriggerType.RUN,
+        )
+
+        # Mock existing execution (attempt 1 failed)
+        existing_execution = NodeExecution(
+            workflow_name="Test Workflow",
+            run_id=123,
+            node_id="test_node",
+            attempt=1,
+            start_time=datetime.now(timezone.utc),
+            status=NodeStatus.NOK,
+        )
+        mock_dependencies[
+            "node_repo"
+        ].get_latest_execution_attempt.return_value = existing_execution
+
+        # Mock successful retry (attempt 2)
+        mock_dependencies["process_runner"].run_command.return_value = (
+            0,
+            "Success",
+            "",
+        )
+
+        # Act
+        status, execution, final_attempt = engine.retry_node_execution(
+            runbook, "test_node", run_info, max_attempts=3
+        )
+
+        # Assert
+        assert status == NodeStatus.OK
+        assert final_attempt == 2
+        assert execution.attempt == 2
+        assert execution.status == NodeStatus.OK
+        mock_dependencies["node_repo"].get_latest_execution_attempt.assert_called_once()
+
+    def test_retry_node_execution_when_max_attempts_reached_then_returns_failure(
+        self, engine, mock_dependencies
+    ):
+        """Test that retry_node_execution handles max attempts reached"""
+        # Arrange
+        from playbook.domain.models import CommandNode
+
+        runbook = Runbook(
+            title="Test Workflow",
+            description="Test Description",
+            version="1.0",
+            author="Test Author",
+            created_at=datetime.now(timezone.utc),
+            nodes={
+                "test_node": CommandNode(
+                    id="test_node",
+                    type=NodeType.COMMAND,
+                    command_name="failing command",
+                    depends_on=[],
+                )
+            },
+        )
+
+        run_info = RunInfo(
+            workflow_name="Test Workflow",
+            run_id=123,
+            start_time=datetime.now(timezone.utc),
+            status=RunStatus.RUNNING,
+            trigger=TriggerType.RUN,
+        )
+
+        # Mock existing execution (attempt 2 failed)
+        existing_execution = NodeExecution(
+            workflow_name="Test Workflow",
+            run_id=123,
+            node_id="test_node",
+            attempt=2,
+            start_time=datetime.now(timezone.utc),
+            status=NodeStatus.NOK,
+        )
+
+        # Final execution after all retries failed
+        final_execution = NodeExecution(
+            workflow_name="Test Workflow",
+            run_id=123,
+            node_id="test_node",
+            attempt=3,
+            start_time=datetime.now(timezone.utc),
+            status=NodeStatus.NOK,
+        )
+
+        mock_dependencies["node_repo"].get_latest_execution_attempt.side_effect = [
+            existing_execution,  # First call
+            final_execution,  # Second call (after retry)
+        ]
+
+        # Mock failing command
+        mock_dependencies["process_runner"].run_command.return_value = (
+            1,
+            "",
+            "Command failed",
+        )
+
+        # Act
+        status, execution, final_attempt = engine.retry_node_execution(
+            runbook, "test_node", run_info, max_attempts=3
+        )
+
+        # Assert
+        assert status == NodeStatus.NOK
+        assert final_attempt == 3
+        assert execution.attempt == 3
+        assert execution.status == NodeStatus.NOK
+
+    def test_retry_node_execution_when_no_existing_execution_then_starts_from_attempt_one(
+        self, engine, mock_dependencies
+    ):
+        """Test that retry_node_execution starts from attempt 1 when no existing execution"""
+        # Arrange
+        from playbook.domain.models import CommandNode
+
+        runbook = Runbook(
+            title="Test Workflow",
+            description="Test Description",
+            version="1.0",
+            author="Test Author",
+            created_at=datetime.now(timezone.utc),
+            nodes={
+                "test_node": CommandNode(
+                    id="test_node",
+                    type=NodeType.COMMAND,
+                    command_name="test command",
+                    depends_on=[],
+                )
+            },
+        )
+
+        run_info = RunInfo(
+            workflow_name="Test Workflow",
+            run_id=123,
+            start_time=datetime.now(timezone.utc),
+            status=RunStatus.RUNNING,
+            trigger=TriggerType.RUN,
+        )
+
+        # Mock no existing execution
+        mock_dependencies["node_repo"].get_latest_execution_attempt.return_value = None
+
+        # Mock successful execution on first retry attempt
+        mock_dependencies["process_runner"].run_command.return_value = (
+            0,
+            "Success",
+            "",
+        )
+
+        # Act
+        status, execution, final_attempt = engine.retry_node_execution(
+            runbook, "test_node", run_info, max_attempts=3
+        )
+
+        # Assert
+        assert status == NodeStatus.OK
+        assert final_attempt == 1  # Started from attempt 1
+        assert execution.attempt == 1
+
+    def test_execute_node_with_existing_record_when_given_attempt_number_then_creates_correct_execution(
+        self, engine, mock_dependencies
+    ):
+        """Test that execute_node_with_existing_record creates execution with correct attempt number"""
+        # Arrange
+        from playbook.domain.models import CommandNode
+
+        runbook = Runbook(
+            title="Test Workflow",
+            description="Test Description",
+            version="1.0",
+            author="Test Author",
+            created_at=datetime.now(timezone.utc),
+            nodes={
+                "test_node": CommandNode(
+                    id="test_node",
+                    type=NodeType.COMMAND,
+                    command_name="test command",
+                    depends_on=[],
+                )
+            },
+        )
+
+        run_info = RunInfo(
+            workflow_name="Test Workflow",
+            run_id=123,
+            start_time=datetime.now(timezone.utc),
+            status=RunStatus.RUNNING,
+            trigger=TriggerType.RUN,
+        )
+
+        # Mock successful command execution
+        mock_dependencies["process_runner"].run_command.return_value = (
+            0,
+            "Test output",
+            "",
+        )
+
+        # Act - Execute with attempt number 5
+        status, execution = engine.execute_node_with_existing_record(
+            runbook, "test_node", run_info, attempt=5
+        )
+
+        # Assert
+        assert status == NodeStatus.OK
+        assert execution.attempt == 5
+        assert execution.workflow_name == "Test Workflow"
+        assert execution.run_id == 123
+        assert execution.node_id == "test_node"
+        assert execution.stdout == "Test output"
+        mock_dependencies["node_repo"].update_execution.assert_called_once()
+
+    def test_execute_node_with_existing_record_when_command_fails_then_handles_error(
+        self, engine, mock_dependencies
+    ):
+        """Test that execute_node_with_existing_record handles command failures correctly"""
+        # Arrange
+        from playbook.domain.models import CommandNode
+
+        runbook = Runbook(
+            title="Test Workflow",
+            description="Test Description",
+            version="1.0",
+            author="Test Author",
+            created_at=datetime.now(timezone.utc),
+            nodes={
+                "test_node": CommandNode(
+                    id="test_node",
+                    type=NodeType.COMMAND,
+                    command_name="failing command",
+                    depends_on=[],
+                )
+            },
+        )
+
+        run_info = RunInfo(
+            workflow_name="Test Workflow",
+            run_id=123,
+            start_time=datetime.now(timezone.utc),
+            status=RunStatus.RUNNING,
+            trigger=TriggerType.RUN,
+        )
+
+        # Mock failing command execution
+        mock_dependencies["process_runner"].run_command.return_value = (
+            1,
+            "",
+            "Command failed",
+        )
+
+        # Act
+        status, execution = engine.execute_node_with_existing_record(
+            runbook, "test_node", run_info, attempt=2
+        )
+
+        # Assert
+        assert status == NodeStatus.NOK
+        assert execution.attempt == 2
+        assert execution.status == NodeStatus.NOK
+        assert execution.exit_code == 1
+        assert execution.stderr == "Command failed"
+        mock_dependencies["node_repo"].update_execution.assert_called_once()

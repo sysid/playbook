@@ -331,6 +331,44 @@ class RunbookEngine:
 
         return result.status, result
 
+    def execute_node_retry(
+        self, runbook: Runbook, node_id: str, run_info: RunInfo, attempt: int
+    ) -> Tuple[NodeStatus, NodeExecution]:
+        """Execute a node retry, creating a new execution record with the specified attempt number"""
+        node = runbook.nodes[node_id]
+        start_time = self.clock.now()
+
+        # Create a new execution record for this retry attempt
+        execution = NodeExecution(
+            workflow_name=runbook.title,
+            run_id=run_info.run_id,
+            node_id=node_id,
+            attempt=attempt,
+            start_time=start_time,
+            status=NodeStatus.RUNNING,
+        )
+
+        # Create the new execution record in database
+        self.node_repo.create_execution(execution)
+
+        # Execute the node
+        result = self._execute_node_internal(node, start_time)
+
+        # Update execution record with result
+        execution.end_time = result.end_time
+        execution.status = result.status
+        execution.result_text = result.result_text
+        execution.exception = result.exception
+        execution.stdout = result.stdout
+        execution.stderr = result.stderr
+        execution.exit_code = result.exit_code
+        execution.duration_ms = result.duration_ms
+
+        # Update the execution record with the results
+        self.node_repo.update_execution(execution)
+
+        return execution.status, execution
+
     def execute_node(
         self, runbook: Runbook, node_id: str, run_info: RunInfo
     ) -> Tuple[NodeStatus, NodeExecution]:
@@ -388,6 +426,43 @@ class RunbookEngine:
         self.node_repo.update_execution(execution)
 
         return execution.status, execution
+
+    def retry_node_execution(
+        self, runbook: Runbook, node_id: str, run_info: RunInfo, max_attempts: int = 3
+    ) -> Tuple[NodeStatus, NodeExecution, int]:
+        """Retry execution of a failed node, creating new execution records for each attempt
+
+        Returns:
+            Tuple of (final_status, final_execution, total_attempts)
+        """
+        node = runbook.nodes[node_id]
+
+        # Get the current latest attempt for this node
+        latest_execution = self.node_repo.get_latest_execution_attempt(
+            runbook.title, run_info.run_id, node_id
+        )
+
+        current_attempt = latest_execution.attempt if latest_execution else 0
+
+        for attempt_number in range(current_attempt + 1, max_attempts + 1):
+            logger.info(
+                f"Retrying node '{node_id}' - attempt {attempt_number}/{max_attempts}"
+            )
+
+            # Execute node with new attempt number
+            status, execution = self.execute_node_with_existing_record(
+                runbook, node_id, run_info, attempt_number
+            )
+
+            if status == NodeStatus.OK:
+                return status, execution, attempt_number
+
+        # If we get here, all retry attempts failed
+        # Return the last execution attempt
+        final_execution = self.node_repo.get_latest_execution_attempt(
+            runbook.title, run_info.run_id, node_id
+        )
+        return final_execution.status, final_execution, max_attempts
 
     def _execute_manual_node(self, node: ManualNode) -> NodeExecution:
         """Execute a manual node"""

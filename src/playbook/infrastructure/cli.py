@@ -516,10 +516,13 @@ def run(
     state_path: Optional[str] = typer.Option(
         None, "--state-path", help="State database path"
     ),
+    max_retries: int = typer.Option(
+        3, "--max-retries", help="Maximum retry attempts per failed node"
+    ),
 ):
     """Run a playbook from start to finish"""
     parser = RunbookParser()
-    _execute_workflow(parser, file, state_path)
+    _execute_workflow(parser, file, state_path, max_retries=max_retries)
 
 
 @app.command()
@@ -532,10 +535,13 @@ def resume(
     state_path: Optional[str] = typer.Option(
         None, "--state-path", help="State database path"
     ),
+    max_retries: int = typer.Option(
+        3, "--max-retries", help="Maximum retry attempts per failed node"
+    ),
 ):
     """Resume a previously started run"""
     parser = RunbookParser()
-    _execute_workflow(parser, file, state_path, run_id, node_id)
+    _execute_workflow(parser, file, state_path, run_id, node_id, max_retries)
 
 
 def _execute_workflow(
@@ -544,6 +550,7 @@ def _execute_workflow(
     state_path: Optional[str] = None,
     run_id: Optional[int] = None,
     start_node_id: Optional[str] = None,
+    max_retries: int = 3,
 ) -> None:
     """
     Shared workflow execution logic for both run and resume commands
@@ -587,7 +594,9 @@ def _execute_workflow(
             return
 
         # Execute the workflow
-        _execute_nodes(engine, runbook, run_info, nodes_to_run, progress, io_handler)
+        _execute_nodes(
+            engine, runbook, run_info, nodes_to_run, progress, io_handler, max_retries
+        )
 
     except Exception as e:
         console.print(f"[bold red]Error:[/bold red] {str(e)}")
@@ -645,6 +654,7 @@ def _execute_nodes(
     nodes_to_run: List[str],
     progress: Progress,
     io_handler: ConsoleNodeIOHandler,
+    max_retries: int = 3,
 ) -> None:
     """
     Execute the given nodes in the runbook
@@ -699,39 +709,130 @@ def _execute_nodes(
                     task, description=f"Failed: {node_display_name}", advance=1
                 )
 
-                # Handle node failure
-                if execution.exception:
-                    console.print(f"[bold red]Error:[/bold red] {execution.exception}")
+                # Handle node failure with retry loop
+                node_completed = False
 
-                if execution.stderr:
-                    console.print(f"[bold red]stderr:[/bold red]\n{execution.stderr}")
+                # Interactive failure handling loop
+                while not node_completed:
+                    # Show error details
+                    if execution.exception:
+                        console.print(
+                            f"[bold red]Error:[/bold red] {execution.exception}"
+                        )
 
-                # If node is critical, abort
-                if node.critical:
-                    console.print("[bold red]Critical node failed, aborting[/bold red]")
-                    break
+                    if execution.stderr:
+                        console.print(
+                            f"[bold red]stderr:[/bold red]\n{execution.stderr}"
+                        )
 
-                # Ask user what to do
-                progress.stop()  # Hide progress bar for user interaction
-                choice = Prompt.ask(
-                    "Node failed. What would you like to do?",
-                    choices=["r", "s", "a"],
-                    default="r",
-                )
+                    # Get current attempt number for this node
+                    latest_execution = engine.node_repo.get_latest_execution_attempt(
+                        runbook.title, run_info.run_id, current_node_id
+                    )
+                    current_attempt = (
+                        latest_execution.attempt if latest_execution else 0
+                    )
 
-                if choice == "r":
-                    console.print("Retry not implemented in prototype")
-                elif choice == "s":
-                    if not node.critical:
-                        console.print("[bold red]Cannot skip critical node[/bold red]")
+                    # If max retries reached, only allow skip/abort
+                    if current_attempt >= max_retries:
+                        if node.critical:
+                            console.print(
+                                f"[bold red]Critical node failed after {max_retries} attempts. Aborting.[/bold red]"
+                            )
+                            run_info.status = RunStatus.ABORTED
+                            engine.run_repo.update_run(run_info)
+                            node_completed = True
+                            break
+                        else:
+                            prompt_text = f"Node failed. Maximum retries ({max_retries}) reached. Skip (s) or Abort (a)?"
+                            choices = ["s", "a"]
+                            default = "a"
+                            progress.stop()  # Hide progress bar for user interaction
+                            choice = Prompt.ask(
+                                prompt_text, choices=choices, default=default
+                            )
+
+                            if choice == "s":
+                                console.print("Skipping node")
+                                execution.status = NodeStatus.SKIPPED
+                                engine.node_repo.update_execution(execution)
+                                progress.update(
+                                    task,
+                                    description=f"Skipped: {node_display_name}",
+                                    advance=1,
+                                )
+                                node_completed = True
+                            else:  # choice == "a"
+                                console.print("Aborting run")
+                                run_info.status = RunStatus.ABORTED
+                                engine.run_repo.update_run(run_info)
+                                node_completed = True
+                                break
                     else:
-                        console.print("Skipping node")
-                        execution.status = NodeStatus.SKIPPED
-                        engine.node_repo.update_execution(execution)
-                elif choice == "a":
-                    console.print("Aborting run")
-                    run_info.status = RunStatus.ABORTED
-                    engine.run_repo.update_run(run_info)
+                        # Still have retries available
+                        prompt_text = f"Node failed (attempt {current_attempt}/{max_retries}). Retry (r), Skip (s), or Abort (a)?"
+                        choices = ["r", "s", "a"]
+                        default = "r"
+
+                        # Ask user what to do
+                        progress.stop()  # Hide progress bar for user interaction
+                        choice = Prompt.ask(
+                            prompt_text, choices=choices, default=default
+                        )
+
+                        if choice == "r":
+                            next_attempt = current_attempt + 1
+                            console.print(
+                                f"Retrying node '{current_node_id}' (attempt {next_attempt}/{max_retries})..."
+                            )
+
+                            # Execute single retry attempt creating a new execution record
+                            status, execution = engine.execute_node_retry(
+                                runbook, current_node_id, run_info, next_attempt
+                            )
+
+                            if status == NodeStatus.OK:
+                                console.print(
+                                    f"[bold green]Node '{current_node_id}' succeeded on attempt {next_attempt}[/bold green]"
+                                )
+                                progress.update(
+                                    task,
+                                    description=f"Completed: {node_display_name}",
+                                    advance=1,
+                                )
+                                node_completed = True
+                            else:
+                                console.print(
+                                    f"[bold red]Retry attempt {next_attempt} failed[/bold red]"
+                                )
+                                # Loop will continue with updated attempt count
+
+                        elif choice == "s":
+                            if node.critical:
+                                console.print(
+                                    "[bold red]Cannot skip critical node[/bold red]"
+                                )
+                                # Loop will continue to prompt user again
+                            else:
+                                console.print("Skipping node")
+                                execution.status = NodeStatus.SKIPPED
+                                engine.node_repo.update_execution(execution)
+                                progress.update(
+                                    task,
+                                    description=f"Skipped: {node_display_name}",
+                                    advance=1,
+                                )
+                                node_completed = True
+
+                        elif choice == "a":
+                            console.print("Aborting run")
+                            run_info.status = RunStatus.ABORTED
+                            engine.run_repo.update_run(run_info)
+                            node_completed = True
+                            break
+
+                # Break out of main node loop if run was aborted
+                if run_info.status == RunStatus.ABORTED:
                     break
 
             engine.update_run_status(runbook, run_info)

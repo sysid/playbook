@@ -1,0 +1,25 @@
+[runbook]
+title       = "Basic Retry Test"
+description = "Simple workflow for testing retry functionality"
+version     = "0.1.0"
+author      = "test"
+created_at  = "2025-01-20T12:00:00Z"
+
+[start]
+type = "Command"
+command_name = "echo 'Starting test workflow'"
+description = "Initialize the test workflow"
+depends_on = []
+
+[fail_node]
+type = "Command"
+command_name = "exit 1"
+description = "Node that fails for retry testing"
+depends_on = ["start"]
+critical = false
+
+[success_end]
+type = "Command"
+command_name = "echo 'Workflow completed successfully'"
+description = "Final success step"
+depends_on = ["fail_node"]
