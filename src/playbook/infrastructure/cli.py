@@ -1,7 +1,9 @@
 # src/playbook/infrastructure/cli.py
 import datetime
 import logging
+import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from typing import Optional, List
 
@@ -40,7 +42,7 @@ logger = logging.getLogger(__name__)
 app = typer.Typer(
     name="playbook",
     help="Playbook - A workflow engine for operations",
-    add_completion=False,
+    add_completion=True,
 )
 
 # Rich console for pretty output
@@ -202,7 +204,9 @@ def create(
         author = Prompt.ask("Enter author name")
 
     if description is None:
-        description = Prompt.ask("Enter runbook description", default=f"Runbook for {title}")
+        description = Prompt.ask(
+            "Enter runbook description", default=f"Runbook for {title}"
+        )
 
     # Set default output path if none provided
     if output is None:
@@ -246,19 +250,19 @@ created_at  = "{now.isoformat()}"
 
             # Get node description
             default_description = f"Step {node_counter} of the workflow"
-            node_description = Prompt.ask("Enter node description", default=default_description)
+            node_description = Prompt.ask(
+                "Enter node description", default=default_description
+            )
 
             # Get prompt after
             prompt_after = Prompt.ask(
-                "Enter prompt after message",
-                default="Continue with the next step?"
+                "Enter prompt after message", default="Continue with the next step?"
             )
 
             # Get dependencies - default to previous node if exists
             default_deps = f'"{previous_node_id}"' if previous_node_id else ""
             depends_on_str = Prompt.ask(
-                "Enter dependencies (comma-separated IDs)",
-                default=default_deps
+                "Enter dependencies (comma-separated IDs)", default=default_deps
             )
 
             # Parse dependencies from string
@@ -266,14 +270,14 @@ created_at  = "{now.isoformat()}"
             if depends_on_str:
                 # Handle both quoted and unquoted node IDs
                 for dep in depends_on_str.split(","):
-                    dep = dep.strip().strip('"\'')
+                    dep = dep.strip().strip("\"'")
                     if dep:  # Skip empty strings
                         depends_on.append(dep)
 
             # Get critical flag
             critical = Confirm.ask(
                 "Is this node critical? (Failure will abort the workflow)",
-                default=False
+                default=False,
             )
 
             # Build node configuration
@@ -284,7 +288,7 @@ created_at  = "{now.isoformat()}"
                 "prompt_after": prompt_after,
                 "depends_on": depends_on,
                 "critical": critical,
-                "type": "Manual"
+                "type": "Manual",
             }
 
             nodes.append(node)
@@ -300,8 +304,8 @@ created_at  = "{now.isoformat()}"
         # Add nodes to template
         for node in nodes:
             node_section = f"""
-[{node['id']}]
-type         = "{node['type']}"
+[{node["id"]}]
+type         = "{node["type"]}"
 """
             if node["name"]:
                 node_section += f'name         = "{node["name"]}"\n'
@@ -356,7 +360,6 @@ type         = "{node['type']}"
     console.print(f"[bold green]Created new runbook at {output}[/bold green]")
     console.print("\nEdit this file to add more nodes or customize the workflow.")
     console.print("Use 'playbook validate' to check your runbook for correctness.")
-
 
 
 @app.command()
@@ -417,30 +420,81 @@ def validate(
 
 
 @app.command()
-def export_dot(
+def view_dag(
     file: Path = typer.Argument(..., help="Runbook file path"),
-    output: Optional[Path] = typer.Option(
-        None, "--output", help="Output DOT file path"
-    ),
+    keep_dot: bool = typer.Option(False, "--keep-dot", help="Also save DOT file"),
+    no_open: bool = typer.Option(False, "--no-open", help="Don't auto-open the PNG file"),
 ):
-    """Export runbook as DOT file for Graphviz"""
+    """View runbook DAG as PNG image"""
     parser = RunbookParser()
     visualizer = GraphvizVisualizer()
 
     try:
+        # Check if dot binary is available
+        try:
+            subprocess.run(["dot", "-V"], capture_output=True, check=True)
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            console.print("[bold red]Error:[/bold red] Graphviz 'dot' binary not found.")
+            console.print("\n[yellow]To install Graphviz:[/yellow]")
+            console.print("• macOS: [cyan]brew install graphviz[/cyan]")
+            console.print("• Ubuntu/Debian: [cyan]sudo apt-get install graphviz[/cyan]")
+            console.print("• CentOS/RHEL: [cyan]sudo yum install graphviz[/cyan]")
+            console.print("• Windows: Download from https://graphviz.org/download/")
+            sys.exit(1)
+
         # Parse runbook
         console.print(f"Parsing runbook: {file}")
         runbook = parser.parse(str(file))
 
-        # Determine output path
-        if not output:
-            output = file.with_suffix(".dot")
+        # Always save PNG in same directory as TOML file
+        png_file = file.with_suffix(".png")
 
-        # Export to DOT
-        console.print(f"Exporting to DOT: {output}")
-        visualizer.export_dot(runbook, str(output))
+        # DOT file: save if requested, otherwise use temp file
+        if keep_dot:
+            dot_file = file.with_suffix(".dot")
+        else:
+            dot_file = Path(tempfile.mktemp(suffix=".dot"))
 
-        console.print(f"[bold green]DOT file created: {output}[/bold green]")
+        try:
+            # Export to DOT
+            console.print(f"Generating DOT file...")
+            visualizer.export_dot(runbook, str(dot_file))
+
+            # Convert DOT to PNG using Graphviz
+            console.print(f"Converting to PNG: {png_file}")
+            result = subprocess.run(
+                ["dot", "-Tpng", str(dot_file), "-o", str(png_file)],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+
+            # Open the PNG file unless disabled
+            if not no_open:
+                console.print(f"Opening PNG file...")
+                try:
+                    # Try to open with default system viewer
+                    if sys.platform == "darwin":  # macOS
+                        subprocess.run(["open", str(png_file)], check=True)
+                    elif sys.platform == "linux":  # Linux
+                        subprocess.run(["xdg-open", str(png_file)], check=True)
+                    elif sys.platform == "win32":  # Windows
+                        subprocess.run(["start", str(png_file)], shell=True, check=True)
+                    else:
+                        console.print(
+                            f"[yellow]Cannot auto-open on this platform. Please open manually: {png_file}[/yellow]")
+                except subprocess.CalledProcessError:
+                    console.print(f"[yellow]Could not auto-open file. Please open manually: {png_file}[/yellow]")
+
+            # Show success messages
+            console.print(f"[bold green]DAG visualization saved: {png_file}[/bold green]")
+            if keep_dot:
+                console.print(f"[bold green]DOT file saved: {dot_file}[/bold green]")
+
+        finally:
+            # Clean up temporary DOT file if not keeping it
+            if not keep_dot and dot_file.exists():
+                dot_file.unlink()
 
     except Exception as e:
         console.print(f"[bold red]Error:[/bold red] {str(e)}")

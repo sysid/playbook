@@ -128,12 +128,23 @@ playbook run path/to/runbook.playbook.toml
 playbook resume path/to/runbook.playbook.toml 42
 ```
 
-### Export DAG to Graphviz
+### View DAG visualization
 
 ```bash
-playbook export-dot path/to/runbook.playbook.toml --output dag.dot
-dot -Tpng dag.dot -o dag.png
+# View and save DAG as PNG (requires Graphviz)
+playbook view-dag path/to/runbook.playbook.toml
+
+# Also save DOT file
+playbook view-dag path/to/runbook.playbook.toml --keep-dot
+
+# For automation (no auto-open)
+playbook view-dag path/to/runbook.playbook.toml --no-open
 ```
+
+**Note:** DAG visualization requires [Graphviz](https://graphviz.org/download/) to be installed:
+- macOS: `brew install graphviz`
+- Ubuntu/Debian: `sudo apt-get install graphviz`
+- CentOS/RHEL: `sudo yum install graphviz`
 
 ### Show run statistics
 

@@ -5,8 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="5a384825-87f7-4752-bb95-dcf8d7a51e56" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/.idea/copilot.data.migration.agent.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/copilot.data.migration.edit.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/TODO.md" beforeDir="false" afterPath="$PROJECT_DIR$/TODO.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/playbook/infrastructure/cli.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/playbook/infrastructure/cli.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -46,7 +47,7 @@
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.git.unshallow": "true",
     "SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "git-widget-placeholder": "feat/create",
+    "git-widget-placeholder": "feat/autocompletion",
     "last_opened_file_path": "/Users/Q187392/dev/s/private/playbook",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
@@ -200,8 +201,8 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-d6986cc7102b-f27c65a3e318-JavaScript-PY-251.23774.444" />
-        <option value="bundled-python-sdk-890ed5b35930-d9c5bdb153f4-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-251.23774.444" />
+        <option value="bundled-js-predefined-d6986cc7102b-e03c56caf84a-JavaScript-PY-252.23892.439" />
+        <option value="bundled-python-sdk-b3ae9b5d7125-f0eec537fc84-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-252.23892.439" />
       </set>
     </attachedChunks>
   </component>
@@ -220,6 +221,7 @@
       <workItem from="1747307443051" duration="395000" />
       <workItem from="1747493060514" duration="1480000" />
       <workItem from="1747585183236" duration="981000" />
+      <workItem from="1758187886657" duration="1514000" />
     </task>
     <servers />
   </component>
@@ -242,7 +244,7 @@
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/playbook/infrastructure/cli.py</url>
-          <line>398</line>
+          <line>399</line>
           <option name="timeStamp" value="3" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
