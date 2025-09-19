@@ -435,8 +435,6 @@ class RunbookEngine:
         Returns:
             Tuple of (final_status, final_execution, total_attempts)
         """
-        node = runbook.nodes[node_id]
-
         # Get the current latest attempt for this node
         latest_execution = self.node_repo.get_latest_execution_attempt(
             runbook.title, run_info.run_id, node_id
