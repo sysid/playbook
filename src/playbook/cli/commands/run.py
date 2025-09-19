@@ -8,7 +8,7 @@ import typer
 from rich.progress import Progress, TextColumn, BarColumn, TimeElapsedColumn
 from rich.prompt import Prompt
 
-from ..common import console, get_engine, get_parser, handle_error_and_exit
+from ..common import console, get_engine, get_parser, get_variable_manager, handle_error_and_exit
 from ..interaction.handlers import ConsoleNodeIOHandler
 from ...domain.models import (
     NodeStatus,
@@ -29,11 +29,26 @@ def run(
     max_retries: int = typer.Option(
         3, "--max-retries", help="Maximum retry attempts per failed node"
     ),
+    var: Optional[List[str]] = typer.Option(
+        None, "--var", help="Set variable in KEY=VALUE format"
+    ),
+    vars_file: Optional[str] = typer.Option(
+        None, "--vars-file", help="Load variables from file"
+    ),
+    vars_env: Optional[str] = typer.Option(
+        "PLAYBOOK_VAR_", "--vars-env", help="Environment variable prefix for loading variables"
+    ),
+    no_interactive_vars: bool = typer.Option(
+        False, "--no-interactive-vars", help="Don't prompt for missing required variables"
+    ),
 ):
     """Run a playbook from start to finish"""
     try:
-        parser = get_parser()
-        _execute_workflow(parser, file, state_path, max_retries=max_retries)
+        # Process variables
+        variables = _collect_variables(var, vars_file, vars_env, not no_interactive_vars)
+
+        parser = get_parser(interactive=not no_interactive_vars)
+        _execute_workflow(parser, file, state_path, variables=variables, max_retries=max_retries)
     except Exception as e:
         handle_error_and_exit(e, "Runbook execution", ctx.params.get('verbose', False))
 
@@ -51,13 +66,62 @@ def resume(
     max_retries: int = typer.Option(
         3, "--max-retries", help="Maximum retry attempts per failed node"
     ),
+    var: Optional[List[str]] = typer.Option(
+        None, "--var", help="Set variable in KEY=VALUE format"
+    ),
+    vars_file: Optional[str] = typer.Option(
+        None, "--vars-file", help="Load variables from file"
+    ),
+    vars_env: Optional[str] = typer.Option(
+        "PLAYBOOK_VAR_", "--vars-env", help="Environment variable prefix for loading variables"
+    ),
+    no_interactive_vars: bool = typer.Option(
+        False, "--no-interactive-vars", help="Don't prompt for missing required variables"
+    ),
 ):
     """Resume a previously started run"""
     try:
-        parser = get_parser()
-        _execute_workflow(parser, file, state_path, run_id, node_id, max_retries)
+        # Process variables
+        variables = _collect_variables(var, vars_file, vars_env, not no_interactive_vars)
+
+        parser = get_parser(interactive=not no_interactive_vars)
+        _execute_workflow(parser, file, state_path, run_id, node_id, max_retries, variables=variables)
     except Exception as e:
         handle_error_and_exit(e, "Runbook resume", ctx.params.get('verbose', False))
+
+
+def _collect_variables(
+    var: Optional[List[str]],
+    vars_file: Optional[str],
+    vars_env: str,
+    interactive: bool
+) -> dict:
+    """Collect variables from all sources."""
+    var_manager = get_variable_manager(interactive=interactive)
+
+    # Collect from different sources
+    cli_vars = {}
+    file_vars = {}
+    env_vars = {}
+
+    # CLI variables
+    if var:
+        cli_vars = var_manager.parse_cli_variables(var)
+
+    # File variables
+    if vars_file:
+        file_vars = var_manager.load_variables_from_file(vars_file)
+
+    # Environment variables
+    if vars_env:
+        env_vars = var_manager.load_variables_from_env(vars_env)
+
+    # Merge with priority
+    return var_manager.merge_variables(
+        cli_vars=cli_vars,
+        file_vars=file_vars,
+        env_vars=env_vars
+    )
 
 
 def _execute_workflow(
@@ -67,6 +131,7 @@ def _execute_workflow(
     run_id: Optional[int] = None,
     start_node_id: Optional[str] = None,
     max_retries: int = 3,
+    variables: Optional[dict] = None,
 ) -> None:
     """
     Shared workflow execution logic for both run and resume commands
@@ -74,7 +139,7 @@ def _execute_workflow(
     # Parse runbook
     console.print(f"Parsing runbook: {file}")
     try:
-        runbook = parser.parse(str(file))
+        runbook = parser.parse(str(file), variables=variables)
     except FileNotFoundError:
         raise ParseError(
             f"Runbook file not found: {file}",

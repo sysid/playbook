@@ -6,7 +6,7 @@ import typer
 from rich.table import Table
 
 from ..common import console, handle_error_and_exit
-from ...config import load_config
+from ...config import config_manager
 from ...infrastructure.statistics import SQLiteStatisticsRepository
 from ...service.statistics import StatisticsService
 from ...domain.exceptions import DatabaseError
@@ -19,11 +19,11 @@ def info(
 ):
     """Show database info and workflow statistics"""
     try:
-        config = load_config()
+        config = config_manager.get_config()
 
         # Create statistics service
         try:
-            stats_repo = SQLiteStatisticsRepository(config["state_path"])
+            stats_repo = SQLiteStatisticsRepository(config.database.path)
             stats_service = StatisticsService(stats_repo)
         except Exception as e:
             raise DatabaseError(

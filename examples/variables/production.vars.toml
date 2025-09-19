@@ -1,0 +1,12 @@
+# Production environment variables
+APP_NAME = "myapp"
+ENVIRONMENT = "prod"
+VERSION = "1.2.3"
+TIMEOUT = 300
+SKIP_TESTS = false
+REPLICA_COUNT = 5
+ENABLE_MONITORING = true
+SERVICES = ["api", "web", "worker", "scheduler"]
+DATABASE_URL = "postgresql://prod_user:SECURE_PASSWORD@prod-db.company.com:5432/myapp_prod"
+SECRET_KEY = "SECURE_PRODUCTION_SECRET_KEY"
+NAMESPACE = "production"

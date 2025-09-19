@@ -1,9 +1,9 @@
 # src/playbook/domain/models.py
 from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Optional, Union, Literal
+from typing import Dict, List, Optional, Union, Literal, Any
 
-from pydantic import BaseModel, Field, RootModel  # Add RootModel import
+from pydantic import BaseModel, Field, RootModel, field_validator
 
 
 class NodeType(str, Enum):
@@ -111,3 +111,45 @@ class RunInfo(BaseModel):
     nodes_nok: int = 0
     nodes_skipped: int = 0
     trigger: TriggerType
+
+
+class VariableDefinition(BaseModel):
+    """Variable definition schema for workflow variables."""
+    default: Optional[Any] = None
+    required: bool = False
+    type: Literal['string', 'int', 'float', 'bool', 'list'] = 'string'
+    choices: Optional[List[Any]] = None
+    description: Optional[str] = None
+    min: Optional[Union[int, float]] = None
+    max: Optional[Union[int, float]] = None
+    pattern: Optional[str] = None  # Regex pattern for strings
+
+    @field_validator('choices')
+    @classmethod
+    def validate_choices(cls, v, info):
+        """Ensure choices match the variable type."""
+        if v is not None and 'type' in info.data:
+            var_type = info.data['type']
+            if var_type == 'int':
+                for choice in v:
+                    if not isinstance(choice, int):
+                        raise ValueError(f"Choice '{choice}' is not an integer")
+            elif var_type == 'float':
+                for choice in v:
+                    if not isinstance(choice, (int, float)):
+                        raise ValueError(f"Choice '{choice}' is not a number")
+            elif var_type == 'bool':
+                for choice in v:
+                    if not isinstance(choice, bool):
+                        raise ValueError(f"Choice '{choice}' is not a boolean")
+        return v
+
+    @field_validator('min', 'max')
+    @classmethod
+    def validate_min_max(cls, v, info):
+        """Ensure min/max are only used with numeric types."""
+        if v is not None and 'type' in info.data:
+            var_type = info.data['type']
+            if var_type not in ['int', 'float']:
+                raise ValueError("min/max can only be used with int or float types")
+        return v

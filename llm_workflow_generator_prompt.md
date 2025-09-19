@@ -29,8 +29,8 @@ For human approval/interaction steps:
 ```toml
 [node_id]
 type = "Manual"
-prompt_after = "Question or prompt for the operator?"
 description = "What this manual step accomplishes"
+prompt_after = "Question or prompt for the operator?"
 depends_on = ["previous_node_id"]
 timeout = 300  # Optional: timeout in seconds (default: 300)
 critical = false  # Optional: if true, failure stops workflow
@@ -42,8 +42,8 @@ For shell command execution:
 ```toml
 [node_id]
 type = "Command"
-command_name = "echo 'Hello World'"
 description = "What this command accomplishes"
+command_name = "echo 'Hello World'"
 depends_on = ["previous_node_id"]
 interactive = false  # Optional: if true, allows interactive input
 timeout = 300  # Optional: timeout in seconds (default: 300)
@@ -56,9 +56,9 @@ For Python function calls:
 ```toml
 [node_id]
 type = "Function"
+description = "What this function accomplishes"
 function_name = "module.submodule.function_name"
 function_params = { "param1" = "value1", "param2" = 42 }
-description = "What this function accomplishes"
 depends_on = ["previous_node_id"]
 critical = false  # Optional: if true, failure stops workflow
 skip = false  # Optional: if true, node is skipped
@@ -98,28 +98,28 @@ created_at = "2025-01-20T12:00:00Z"
 
 [start_backup]
 type = "Manual"
-prompt_after = "Ready to start database backup?"
 description = "Operator confirmation to begin backup"
+prompt_after = "Ready to start database backup?"
 depends_on = []
 
 [create_backup]
 type = "Command"
-command_name = "pg_dump -h localhost -U postgres mydb > backup.sql"
 description = "Create PostgreSQL database backup"
+command_name = "pg_dump -h localhost -U postgres mydb > backup.sql"
 depends_on = ["start_backup"]
 timeout = 1800
 
 [verify_backup]
 type = "Command"
-command_name = "ls -la backup.sql && wc -l backup.sql"
 description = "Verify backup file was created and contains data"
+command_name = "ls -la backup.sql && wc -l backup.sql"
 depends_on = ["create_backup"]
 
 [notify_completion]
 type = "Function"
+description = "Send completion notification to team"
 function_name = "notifications.slack.send_message"
 function_params = { "channel" = "#ops", "message" = "Database backup completed successfully" }
-description = "Send completion notification to team"
 depends_on = ["verify_backup"]
 ```
 
@@ -134,32 +134,32 @@ created_at = "2025-01-20T12:00:00Z"
 
 [deploy_start]
 type = "Manual"
-prompt_after = "Approve deployment to production?"
 description = "Manual approval for production deployment"
+prompt_after = "Approve deployment to production?"
 depends_on = []
 
 [deploy_app]
 type = "Command"
-command_name = "kubectl apply -f deployment.yaml"
 description = "Deploy application to Kubernetes"
+command_name = "kubectl apply -f deployment.yaml"
 depends_on = ["deploy_start"]
 
 [check_app_health]
 type = "Command"
-command_name = "curl -f http://app.example.com/health"
 description = "Verify application health endpoint"
+command_name = "curl -f http://app.example.com/health"
 depends_on = ["deploy_app"]
 
 [check_database_connectivity]
 type = "Command"
-command_name = "kubectl exec deployment/app -- nc -z database 5432"
 description = "Verify database connectivity from app"
+command_name = "kubectl exec deployment/app -- nc -z database 5432"
 depends_on = ["deploy_app"]
 
 [final_verification]
 type = "Manual"
-prompt_after = "All checks passed. Confirm deployment success?"
 description = "Final manual verification of deployment"
+prompt_after = "All checks passed. Confirm deployment success?"
 depends_on = ["check_app_health", "check_database_connectivity"]
 ```
 

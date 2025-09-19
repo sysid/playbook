@@ -35,6 +35,7 @@ class TestValidateCommand:
         mock_runbook.nodes["node2"].skip = False
 
         mock_parser.parse.return_value = mock_runbook
+        mock_parser.get_variable_definitions.return_value = {}  # No variables defined
         mock_get_parser.return_value = mock_parser
 
         mock_engine = Mock()
@@ -46,7 +47,7 @@ class TestValidateCommand:
         assert result.exit_code == 0
         assert "Runbook is valid!" in result.output
         assert "Test Workflow" in result.output
-        mock_parser.parse.assert_called_once_with(temp_toml_file)
+        mock_parser.parse.assert_called_once_with(temp_toml_file, variables={})
         mock_engine.validate.assert_called_once_with(mock_runbook)
 
     @patch("playbook.cli.commands.validate.get_parser")
@@ -59,6 +60,7 @@ class TestValidateCommand:
         mock_runbook = Mock()
         mock_runbook.title = "Test Workflow"
         mock_parser.parse.return_value = mock_runbook
+        mock_parser.get_variable_definitions.return_value = {}  # No variables defined
         mock_get_parser.return_value = mock_parser
 
         mock_engine = Mock()
@@ -77,6 +79,7 @@ class TestValidateCommand:
         """Test validation with parse error."""
         mock_parser = Mock()
         mock_parser.parse.side_effect = Exception("Parse error")
+        mock_parser.get_variable_definitions.return_value = {}  # No variables defined
         mock_get_parser.return_value = mock_parser
 
         result = cli_runner.invoke(app, ["validate", temp_toml_file])
