@@ -5,24 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="5a384825-87f7-4752-bb95-dcf8d7a51e56" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/examples/plugin-auto.playbook.toml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CLAUDE.md" beforeDir="false" afterPath="$PROJECT_DIR$/CLAUDE.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/playbook/cli/common.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/playbook/cli/common.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/playbook/domain/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/playbook/domain/models.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/playbook/domain/plugins.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/playbook/domain/plugins.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/playbook/domain/ports.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/playbook/domain/ports.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/playbook/infrastructure/functions.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/playbook/infrastructure/plugins/python_plugin.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/playbook/infrastructure/plugins/python_plugin.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/playbook/service/engine.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/playbook/service/engine.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/test_domain/test_plugin_models.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_domain/test_plugin_models.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/test_infrastructure/test_functions.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/test_infrastructure/test_parser.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_infrastructure/test_parser.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/test_infrastructure/test_parser_variables.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_infrastructure/test_parser_variables.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/test_infrastructure/test_python_plugin.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_infrastructure/test_python_plugin.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/test_integration/test_plugin_integration.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_integration/test_plugin_integration.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/test_service/test_engine.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_service/test_engine.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_cli/test_commands/test_version.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_cli/test_commands/test_version.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -61,7 +44,7 @@
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.git.unshallow": "true",
     "SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "git-widget-placeholder": "feat/plugins",
+    "git-widget-placeholder": "main",
     "last_opened_file_path": "/Users/Q187392/dev/s/private/playbook",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
@@ -258,12 +241,12 @@
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/playbook/service/engine.py</url>
-          <line>485</line>
+          <line>488</line>
           <option name="timeStamp" value="4" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/playbook/service/engine.py</url>
-          <line>191</line>
+          <line>194</line>
           <option name="timeStamp" value="5" />
         </line-breakpoint>
       </breakpoints>
