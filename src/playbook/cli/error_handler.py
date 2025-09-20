@@ -73,7 +73,7 @@ class ErrorHandler:
             content.append(f"\nContext: {context}\n", style="dim")
 
         # Add error-specific context
-        if hasattr(error, 'context') and error.context:
+        if hasattr(error, "context") and error.context:
             content.append("\nDetails:\n", style="bold")
             for key, value in error.context.items():
                 content.append(f"  {key}: {value}\n", style="dim")
@@ -102,16 +102,11 @@ class ErrorHandler:
             content.append(f"Timeout: {error.timeout_seconds}s\n", style="dim")
 
         # Add suggestion if available
-        if hasattr(error, 'suggestion') and error.suggestion:
+        if hasattr(error, "suggestion") and error.suggestion:
             content.append(f"\n💡 Suggestion: {error.suggestion}", style="green")
 
         # Display the error panel
-        panel = Panel(
-            content,
-            title=title,
-            border_style=style,
-            expand=False
-        )
+        panel = Panel(content, title=title, border_style=style, expand=False)
 
         self.console.print(panel)
 
@@ -132,14 +127,11 @@ class ErrorHandler:
             content.append(f"\nContext: {context}\n", style="dim")
 
         content.append("\nThis appears to be an unexpected error. ", style="yellow")
-        content.append("Please report this issue with the following details:", style="yellow")
-
-        panel = Panel(
-            content,
-            title=title,
-            border_style="red",
-            expand=False
+        content.append(
+            "Please report this issue with the following details:", style="yellow"
         )
+
+        panel = Panel(content, title=title, border_style="red", expand=False)
 
         self.console.print(panel)
 
@@ -154,7 +146,9 @@ class ErrorHandler:
         self.console.print("[dim]" + "=" * 50 + "[/dim]")
 
         # Get traceback
-        tb_str = "".join(traceback.format_exception(type(error), error, error.__traceback__))
+        tb_str = "".join(
+            traceback.format_exception(type(error), error, error.__traceback__)
+        )
         self.console.print(f"[dim]{tb_str}[/dim]")
 
     def format_validation_errors(self, errors: list[str]) -> None:
@@ -163,7 +157,9 @@ class ErrorHandler:
             return
 
         content = Text()
-        content.append("The following validation errors were found:\n\n", style="yellow")
+        content.append(
+            "The following validation errors were found:\n\n", style="yellow"
+        )
 
         for i, error in enumerate(errors, 1):
             content.append(f"{i}. {error}\n", style="red")
@@ -171,10 +167,7 @@ class ErrorHandler:
         content.append("\n💡 Fix these issues and try again.", style="green")
 
         panel = Panel(
-            content,
-            title="⚠️ Validation Errors",
-            border_style="yellow",
-            expand=False
+            content, title="⚠️ Validation Errors", border_style="yellow", expand=False
         )
 
         self.console.print(panel)
@@ -191,10 +184,7 @@ class ErrorHandler:
             content.append(f"💡 {suggestion}\n", style="green")
 
         panel = Panel(
-            content,
-            title="Helpful Suggestions",
-            border_style="green",
-            expand=False
+            content, title="Helpful Suggestions", border_style="green", expand=False
         )
 
         self.console.print(panel)

@@ -43,7 +43,9 @@ class TestPythonPlugin:
 
     def test_execute_invalid_function(self, plugin):
         """Test calling unknown function."""
-        with pytest.raises(ValueError, match="Function 'invalid' not found in plugin 'python'"):
+        with pytest.raises(
+            ValueError, match="Function 'invalid' not found in plugin 'python'"
+        ):
             plugin.execute("invalid", {})
 
     def test_execute_uninitialized(self):
@@ -51,9 +53,7 @@ class TestPythonPlugin:
         plugin = PythonPlugin()
 
         with pytest.raises(PluginExecutionError, match="Plugin not initialized"):
-            plugin.execute("notify", {
-                "message": "test"
-            })
+            plugin.execute("notify", {"message": "test"})
 
     def test_execute_notify(self, plugin):
         """Test notify function."""
@@ -67,7 +67,9 @@ class TestPythonPlugin:
 
     def test_execute_throw(self, plugin):
         """Test throw function."""
-        with pytest.raises(PluginExecutionError, match="Failed to execute function throw"):
+        with pytest.raises(
+            PluginExecutionError, match="Failed to execute function throw"
+        ):
             plugin.execute("throw", {})
 
     def test_cleanup(self, plugin):
@@ -84,5 +86,3 @@ class TestPythonPlugin:
         # Invalid parameter type for sleep
         with pytest.raises(ValueError, match="Cannot convert parameter 'seconds'"):
             plugin.execute("sleep", {"seconds": "not_an_int"})
-
-

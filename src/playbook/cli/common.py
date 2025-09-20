@@ -70,7 +70,9 @@ def get_error_handler(debug: bool = False) -> ErrorHandler:
     return ErrorHandler(console, debug)
 
 
-def handle_error_and_exit(error: Exception, context: str = None, debug: bool = False) -> None:
+def handle_error_and_exit(
+    error: Exception, context: str = None, debug: bool = False
+) -> None:
     """Handle an error and exit with appropriate code"""
     error_handler = get_error_handler(debug)
     exit_code = error_handler.handle_error(error, context)

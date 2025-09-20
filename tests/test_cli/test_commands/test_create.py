@@ -1,8 +1,6 @@
 # tests/test_cli/test_commands/test_create.py
 """Tests for the create command."""
 
-
-
 from playbook.cli.main import app
 
 

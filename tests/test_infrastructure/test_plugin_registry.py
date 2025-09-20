@@ -9,9 +9,12 @@ from src.playbook.domain.plugins import (
     Plugin,
     PluginMetadata,
     PluginNotFoundError,
-    PluginInitializationError
+    PluginInitializationError,
 )
-from tests.test_infrastructure.test_plugins.test_plugin import ExampleTestPlugin, ConfigurableTestPlugin
+from tests.test_infrastructure.test_plugins.test_plugin import (
+    ExampleTestPlugin,
+    ConfigurableTestPlugin,
+)
 
 
 class TestPluginRegistry:
@@ -30,6 +33,7 @@ class TestPluginRegistry:
 
     def test_register_plugin_invalid_class(self, registry):
         """Test registering invalid plugin class."""
+
         class InvalidPlugin:
             pass
 
@@ -59,9 +63,10 @@ class TestPluginRegistry:
         with pytest.raises(PluginNotFoundError, match="Plugin 'nonexistent' not found"):
             registry.get_plugin("nonexistent")
 
-    @patch('src.playbook.infrastructure.plugin_registry.logger')
+    @patch("src.playbook.infrastructure.plugin_registry.logger")
     def test_get_plugin_initialization_error(self, mock_logger, registry):
         """Test plugin initialization error."""
+
         class FailingPlugin(Plugin):
             def get_metadata(self):
                 return PluginMetadata(
@@ -79,7 +84,9 @@ class TestPluginRegistry:
 
         registry.register_plugin("failing", FailingPlugin)
 
-        with pytest.raises(PluginInitializationError, match="Failed to initialize plugin 'failing'"):
+        with pytest.raises(
+            PluginInitializationError, match="Failed to initialize plugin 'failing'"
+        ):
             registry.get_plugin("failing")
 
     def test_get_plugin_cached(self, registry):
@@ -169,7 +176,7 @@ class TestPluginRegistry:
         config_info = next(p for p in info if p["name"] == "configurable")
         assert config_info["initialized"] is False
 
-    @patch('src.playbook.infrastructure.plugin_registry.entry_points')
+    @patch("src.playbook.infrastructure.plugin_registry.entry_points")
     def test_discover_entry_point_plugins(self, mock_entry_points, registry):
         """Test discovering plugins through entry points."""
         # Mock entry point
@@ -186,9 +193,11 @@ class TestPluginRegistry:
 
         assert "test_plugin" in registry.list_plugins()
 
-    @patch('src.playbook.infrastructure.plugin_registry.entry_points')
-    @patch('src.playbook.infrastructure.plugin_registry.logger')
-    def test_discover_entry_point_plugins_load_error(self, mock_logger, mock_entry_points, registry):
+    @patch("src.playbook.infrastructure.plugin_registry.entry_points")
+    @patch("src.playbook.infrastructure.plugin_registry.logger")
+    def test_discover_entry_point_plugins_load_error(
+        self, mock_logger, mock_entry_points, registry
+    ):
         """Test handling errors during entry point loading."""
         # Mock entry point that fails to load
         mock_entry_point = Mock()

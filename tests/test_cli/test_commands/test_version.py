@@ -1,7 +1,6 @@
 # tests/test_cli/test_commands/test_version.py
 """Tests for the version command."""
 
-
 from playbook.cli.main import app
 
 

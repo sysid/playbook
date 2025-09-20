@@ -16,12 +16,19 @@ logger = logging.getLogger(__name__)
 
 class DatabaseConfig(BaseModel):
     """Database configuration."""
-    path: str = Field(default="~/.config/playbook/run.db", description="Database file path")
-    timeout: int = Field(default=30, ge=1, le=300, description="Database timeout in seconds")
-    backup_enabled: bool = Field(default=True, description="Enable automatic backups")
-    backup_count: int = Field(default=5, ge=1, le=50, description="Number of backups to keep")
 
-    @field_validator('path')
+    path: str = Field(
+        default="~/.config/playbook/run.db", description="Database file path"
+    )
+    timeout: int = Field(
+        default=30, ge=1, le=300, description="Database timeout in seconds"
+    )
+    backup_enabled: bool = Field(default=True, description="Enable automatic backups")
+    backup_count: int = Field(
+        default=5, ge=1, le=50, description="Number of backups to keep"
+    )
+
+    @field_validator("path")
     @classmethod
     def validate_path(cls, v):
         """Expand user path and ensure parent directory exists."""
@@ -32,24 +39,38 @@ class DatabaseConfig(BaseModel):
 
 class ExecutionConfig(BaseModel):
     """Execution configuration."""
-    default_timeout: int = Field(default=300, ge=1, description="Default command timeout in seconds")
-    max_retries: int = Field(default=3, ge=0, le=10, description="Default maximum retries")
-    interactive_timeout: int = Field(default=1800, ge=30, description="Interactive command timeout")
-    parallel_execution: bool = Field(default=False, description="Enable parallel node execution")
+
+    default_timeout: int = Field(
+        default=300, ge=1, description="Default command timeout in seconds"
+    )
+    max_retries: int = Field(
+        default=3, ge=0, le=10, description="Default maximum retries"
+    )
+    interactive_timeout: int = Field(
+        default=1800, ge=30, description="Interactive command timeout"
+    )
+    parallel_execution: bool = Field(
+        default=False, description="Enable parallel node execution"
+    )
 
 
 class LoggingConfig(BaseModel):
     """Logging configuration."""
+
     level: str = Field(default="INFO", description="Logging level")
     file_path: Optional[str] = Field(default=None, description="Log file path")
-    max_size_mb: int = Field(default=10, ge=1, le=100, description="Max log file size in MB")
-    backup_count: int = Field(default=3, ge=1, le=10, description="Number of log files to keep")
+    max_size_mb: int = Field(
+        default=10, ge=1, le=100, description="Max log file size in MB"
+    )
+    backup_count: int = Field(
+        default=3, ge=1, le=10, description="Number of log files to keep"
+    )
 
-    @field_validator('level')
+    @field_validator("level")
     @classmethod
     def validate_level(cls, v):
         """Validate logging level."""
-        valid_levels = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
+        valid_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
         if v.upper() not in valid_levels:
             raise ValueError(f"Invalid logging level. Must be one of: {valid_levels}")
         return v.upper()
@@ -57,25 +78,29 @@ class LoggingConfig(BaseModel):
 
 class UIConfig(BaseModel):
     """User interface configuration."""
+
     progress_style: str = Field(default="bar", description="Progress display style")
-    color_theme: str = Field(default="auto", description="Color theme (auto/light/dark/none)")
+    color_theme: str = Field(
+        default="auto", description="Color theme (auto/light/dark/none)"
+    )
     show_timestamps: bool = Field(default=True, description="Show timestamps in output")
     compact_output: bool = Field(default=False, description="Use compact output format")
 
 
 class PlaybookConfig(BaseModel):
     """Main configuration model."""
+
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     execution: ExecutionConfig = Field(default_factory=ExecutionConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     ui: UIConfig = Field(default_factory=UIConfig)
     environment: str = Field(default="production", description="Environment name")
 
-    @field_validator('environment')
+    @field_validator("environment")
     @classmethod
     def validate_environment(cls, v):
         """Validate environment name."""
-        valid_envs = ['development', 'testing', 'production']
+        valid_envs = ["development", "testing", "production"]
         if v not in valid_envs:
             raise ValueError(f"Invalid environment. Must be one of: {valid_envs}")
         return v
@@ -94,22 +119,22 @@ class ConfigManager:
         paths = []
 
         # 1. Environment-specific config file
-        env = os.getenv('PLAYBOOK_ENV', 'production')
-        if env_config := os.getenv('PLAYBOOK_CONFIG'):
+        env = os.getenv("PLAYBOOK_ENV", "production")
+        if env_config := os.getenv("PLAYBOOK_CONFIG"):
             paths.append(Path(env_config))
 
         # 2. Local config file
-        if Path('playbook.toml').exists():
-            paths.append(Path('playbook.toml'))
+        if Path("playbook.toml").exists():
+            paths.append(Path("playbook.toml"))
 
         # 3. User config directory
-        user_config_dir = Path.home() / '.config' / 'playbook'
-        paths.append(user_config_dir / f'{env}.toml')
-        paths.append(user_config_dir / 'config.toml')
+        user_config_dir = Path.home() / ".config" / "playbook"
+        paths.append(user_config_dir / f"{env}.toml")
+        paths.append(user_config_dir / "config.toml")
 
         # 4. System config directory
-        if os.name != 'nt':  # Unix-like systems
-            paths.append(Path('/etc/playbook/config.toml'))
+        if os.name != "nt":  # Unix-like systems
+            paths.append(Path("/etc/playbook/config.toml"))
 
         return paths
 
@@ -131,12 +156,14 @@ class ConfigManager:
 
         try:
             self._config = PlaybookConfig(**config_data)
-            logger.info(f"Configuration loaded for environment: {self._config.environment}")
+            logger.info(
+                f"Configuration loaded for environment: {self._config.environment}"
+            )
             return self._config
         except Exception as e:
             raise ConfigurationError(
                 f"Invalid configuration: {str(e)}",
-                suggestion="Check your configuration file syntax and required fields"
+                suggestion="Check your configuration file syntax and required fields",
             )
 
     def _load_config_discovery(self) -> Dict[str, Any]:
@@ -159,47 +186,56 @@ class ConfigManager:
         """Load configuration from a TOML file."""
         try:
             import tomllib
-            with open(config_path, 'rb') as f:
+
+            with open(config_path, "rb") as f:
                 return tomllib.load(f)
         except ImportError:
             raise ConfigurationError(
                 "TOML library not available",
-                suggestion="Install tomllib or use Python 3.11+"
+                suggestion="Install tomllib or use Python 3.11+",
             )
         except FileNotFoundError:
             raise ConfigurationError(
                 f"Configuration file not found: {config_path}",
-                suggestion="Create a configuration file or check the path"
+                suggestion="Create a configuration file or check the path",
             )
         except Exception as e:
             raise ConfigurationError(
                 f"Failed to parse configuration file {config_path}: {str(e)}",
-                suggestion="Check the TOML syntax in your configuration file"
+                suggestion="Check the TOML syntax in your configuration file",
             )
 
     def _apply_env_overrides(self, config_data: Dict[str, Any]) -> Dict[str, Any]:
         """Apply environment variable overrides."""
         env_mappings = {
-            'PLAYBOOK_ENV': 'environment',
-            'PLAYBOOK_DB_PATH': 'database.path',
-            'PLAYBOOK_LOG_LEVEL': 'logging.level',
-            'PLAYBOOK_LOG_FILE': 'logging.file_path',
-            'PLAYBOOK_MAX_RETRIES': 'execution.max_retries',
-            'PLAYBOOK_DEFAULT_TIMEOUT': 'execution.default_timeout',
+            "PLAYBOOK_ENV": "environment",
+            "PLAYBOOK_DB_PATH": "database.path",
+            "PLAYBOOK_LOG_LEVEL": "logging.level",
+            "PLAYBOOK_LOG_FILE": "logging.file_path",
+            "PLAYBOOK_MAX_RETRIES": "execution.max_retries",
+            "PLAYBOOK_DEFAULT_TIMEOUT": "execution.default_timeout",
         }
 
         for env_var, config_path in env_mappings.items():
             if value := os.getenv(env_var):
-                self._set_nested_value(config_data, config_path, self._convert_env_value(value))
+                self._set_nested_value(
+                    config_data, config_path, self._convert_env_value(value)
+                )
 
         return config_data
 
-    def _merge_configs(self, base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
+    def _merge_configs(
+        self, base: Dict[str, Any], override: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Merge two configuration dictionaries."""
         result = base.copy()
 
         for key, value in override.items():
-            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            if (
+                key in result
+                and isinstance(result[key], dict)
+                and isinstance(value, dict)
+            ):
                 result[key] = self._merge_configs(result[key], value)
             else:
                 result[key] = value
@@ -208,7 +244,7 @@ class ConfigManager:
 
     def _set_nested_value(self, data: Dict[str, Any], path: str, value: Any):
         """Set a nested value using dot notation."""
-        keys = path.split('.')
+        keys = path.split(".")
         current = data
 
         for key in keys[:-1]:
@@ -221,8 +257,8 @@ class ConfigManager:
     def _convert_env_value(self, value: str) -> Any:
         """Convert environment variable string to appropriate type."""
         # Try boolean
-        if value.lower() in ('true', 'false'):
-            return value.lower() == 'true'
+        if value.lower() in ("true", "false"):
+            return value.lower() == "true"
 
         # Try integer
         try:
@@ -250,7 +286,9 @@ class ConfigManager:
         self._config = None
         return self.load_config(config_path)
 
-    def create_template(self, output_path: Path, environment: str = 'development') -> None:
+    def create_template(
+        self, output_path: Path, environment: str = "development"
+    ) -> None:
         """Create a configuration template file."""
         template_config = PlaybookConfig(environment=environment)
 
@@ -303,11 +341,13 @@ compact_output = {str(template_config.ui.compact_output).lower()}
         try:
             output_path.parent.mkdir(parents=True, exist_ok=True)
             output_path.write_text(template_content)
-            self.console.print(f"[green]Created configuration template: {output_path}[/green]")
+            self.console.print(
+                f"[green]Created configuration template: {output_path}[/green]"
+            )
         except Exception as e:
             raise ConfigurationError(
                 f"Failed to create configuration template: {str(e)}",
-                suggestion="Check file permissions and directory access"
+                suggestion="Check file permissions and directory access",
             )
 
 

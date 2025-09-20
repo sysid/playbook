@@ -4,7 +4,12 @@
 import pytest
 from unittest.mock import Mock
 
-from src.playbook.domain.plugins import Plugin, PluginMetadata, FunctionSignature, ParameterDef
+from src.playbook.domain.plugins import (
+    Plugin,
+    PluginMetadata,
+    FunctionSignature,
+    ParameterDef,
+)
 
 
 class MockPlugin(Plugin):
@@ -27,9 +32,9 @@ class MockPlugin(Plugin):
                         "bool_param": ParameterDef(type="bool", required=True),
                         "list_param": ParameterDef(type="list", required=False),
                         "dict_param": ParameterDef(type="dict", required=False),
-                    }
+                    },
                 )
-            }
+            },
         )
 
     def initialize(self, config):
@@ -52,17 +57,27 @@ class TestPluginTypeConversion:
 
     def test_string_parameter_no_conversion(self, plugin):
         """Test string parameters don't get converted."""
-        params = {"str_param": "hello", "int_param": "42", "float_param": "3.14", "bool_param": "true"}
+        params = {
+            "str_param": "hello",
+            "int_param": "42",
+            "float_param": "3.14",
+            "bool_param": "true",
+        }
         plugin.validate_function_params("test_types", params)
 
         assert params["str_param"] == "hello"  # Remains string
-        assert params["int_param"] == 42       # Converted to int
-        assert params["float_param"] == 3.14   # Converted to float
-        assert params["bool_param"] is True    # Converted to bool
+        assert params["int_param"] == 42  # Converted to int
+        assert params["float_param"] == 3.14  # Converted to float
+        assert params["bool_param"] is True  # Converted to bool
 
     def test_integer_conversion_from_string(self, plugin):
         """Test integer conversion from string values."""
-        params = {"str_param": "test", "int_param": "42", "float_param": "3.14", "bool_param": "true"}
+        params = {
+            "str_param": "test",
+            "int_param": "42",
+            "float_param": "3.14",
+            "bool_param": "true",
+        }
         plugin.validate_function_params("test_types", params)
 
         assert params["int_param"] == 42
@@ -70,7 +85,12 @@ class TestPluginTypeConversion:
 
     def test_float_conversion_from_string(self, plugin):
         """Test float conversion from string values."""
-        params = {"str_param": "test", "int_param": "42", "float_param": "3.14", "bool_param": "true"}
+        params = {
+            "str_param": "test",
+            "int_param": "42",
+            "float_param": "3.14",
+            "bool_param": "true",
+        }
         plugin.validate_function_params("test_types", params)
 
         assert params["float_param"] == 3.14
@@ -94,7 +114,12 @@ class TestPluginTypeConversion:
         ]
 
         for input_value, expected in test_cases:
-            params = {"str_param": "test", "int_param": "42", "float_param": "3.14", "bool_param": input_value}
+            params = {
+                "str_param": "test",
+                "int_param": "42",
+                "float_param": "3.14",
+                "bool_param": input_value,
+            }
             plugin.validate_function_params("test_types", params)
             assert params["bool_param"] is expected, f"Failed for input: {input_value}"
 
@@ -105,7 +130,7 @@ class TestPluginTypeConversion:
             "int_param": "42",
             "float_param": "3.14",
             "bool_param": "true",
-            "list_param": '["a", "b", 123]'
+            "list_param": '["a", "b", 123]',
         }
         plugin.validate_function_params("test_types", params)
 
@@ -119,7 +144,7 @@ class TestPluginTypeConversion:
             "int_param": "42",
             "float_param": "3.14",
             "bool_param": "true",
-            "dict_param": '{"key": "value", "number": 42}'
+            "dict_param": '{"key": "value", "number": 42}',
         }
         plugin.validate_function_params("test_types", params)
 
@@ -134,7 +159,7 @@ class TestPluginTypeConversion:
             "float_param": 3.14,
             "bool_param": True,
             "list_param": ["a", "b"],
-            "dict_param": {"key": "value"}
+            "dict_param": {"key": "value"},
         }
         original_params = params.copy()
         plugin.validate_function_params("test_types", params)
@@ -144,21 +169,36 @@ class TestPluginTypeConversion:
 
     def test_invalid_integer_conversion_fails(self, plugin):
         """Test that invalid integer conversion raises ValueError."""
-        params = {"str_param": "test", "int_param": "not_a_number", "float_param": "3.14", "bool_param": "true"}
+        params = {
+            "str_param": "test",
+            "int_param": "not_a_number",
+            "float_param": "3.14",
+            "bool_param": "true",
+        }
 
         with pytest.raises(ValueError, match="Cannot convert parameter 'int_param'"):
             plugin.validate_function_params("test_types", params)
 
     def test_invalid_float_conversion_fails(self, plugin):
         """Test that invalid float conversion raises ValueError."""
-        params = {"str_param": "test", "int_param": "42", "float_param": "not_a_number", "bool_param": "true"}
+        params = {
+            "str_param": "test",
+            "int_param": "42",
+            "float_param": "not_a_number",
+            "bool_param": "true",
+        }
 
         with pytest.raises(ValueError, match="Cannot convert parameter 'float_param'"):
             plugin.validate_function_params("test_types", params)
 
     def test_invalid_boolean_conversion_fails(self, plugin):
         """Test that invalid boolean conversion raises ValueError."""
-        params = {"str_param": "test", "int_param": "42", "float_param": "3.14", "bool_param": "maybe"}
+        params = {
+            "str_param": "test",
+            "int_param": "42",
+            "float_param": "3.14",
+            "bool_param": "maybe",
+        }
 
         with pytest.raises(ValueError, match="Cannot convert parameter 'bool_param'"):
             plugin.validate_function_params("test_types", params)
@@ -170,7 +210,7 @@ class TestPluginTypeConversion:
             "int_param": "42",
             "float_param": "3.14",
             "bool_param": "true",
-            "list_param": "not_valid_json"
+            "list_param": "not_valid_json",
         }
 
         with pytest.raises(ValueError, match="Cannot convert parameter 'list_param'"):
@@ -179,7 +219,12 @@ class TestPluginTypeConversion:
     def test_unsupported_type_conversion_fails(self, plugin):
         """Test that unsupported type conversions fail gracefully."""
         # Test with a non-string, non-target type
-        params = {"str_param": "test", "int_param": [], "float_param": "3.14", "bool_param": "true"}
+        params = {
+            "str_param": "test",
+            "int_param": [],
+            "float_param": "3.14",
+            "bool_param": "true",
+        }
 
         with pytest.raises(ValueError, match="Cannot convert parameter 'int_param'"):
             plugin.validate_function_params("test_types", params)
@@ -188,10 +233,10 @@ class TestPluginTypeConversion:
         """Test simulation of Jinja2 template variable substitution."""
         # This simulates what happens when Jinja2 substitutes {{SLEEP_DURATION}} with "2"
         params = {
-            "str_param": "demo-app",      # {{APP_NAME}}
-            "int_param": "2",             # {{SLEEP_DURATION}}
-            "float_param": "1.5",         # {{TIMEOUT}}
-            "bool_param": "true"          # {{ENABLED}}
+            "str_param": "demo-app",  # {{APP_NAME}}
+            "int_param": "2",  # {{SLEEP_DURATION}}
+            "float_param": "1.5",  # {{TIMEOUT}}
+            "bool_param": "true",  # {{ENABLED}}
         }
 
         plugin.validate_function_params("test_types", params)

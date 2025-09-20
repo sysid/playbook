@@ -1017,7 +1017,9 @@ class TestRunbookEngine:
         # Assert
         assert status == NodeStatus.NOK
         assert updated_execution.status == NodeStatus.NOK
-        assert "Intentional exception for testing purposes" in updated_execution.exception
+        assert (
+            "Intentional exception for testing purposes" in updated_execution.exception
+        )
         assert updated_execution.end_time is not None
         mock_dependencies["node_repo"].update_execution.assert_called()
 

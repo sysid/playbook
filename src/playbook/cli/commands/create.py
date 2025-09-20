@@ -23,7 +23,7 @@ def create(
     try:
         _create_runbook(title, author, description, output)
     except Exception as e:
-        handle_error_and_exit(e, "Runbook creation", ctx.params.get('verbose', False))
+        handle_error_and_exit(e, "Runbook creation", ctx.params.get("verbose", False))
 
 
 def _create_runbook(
@@ -198,13 +198,13 @@ type         = "{node["type"]}"
     except PermissionError:
         raise FileOperationError(
             f"Permission denied writing to: {output}",
-            suggestion="Check file permissions or try a different location"
+            suggestion="Check file permissions or try a different location",
         )
     except Exception as e:
         raise FileOperationError(
             f"Failed to create runbook file: {str(e)}",
             context={"output_path": str(output)},
-            suggestion="Check disk space and file permissions"
+            suggestion="Check disk space and file permissions",
         )
 
     console.print(f"[bold green]Created new runbook at {output}[/bold green]")

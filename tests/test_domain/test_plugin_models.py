@@ -19,7 +19,7 @@ class TestFunctionNodePluginSupport:
             function="send_message",
             function_params={"channel": "#test", "message": "Hello"},
             plugin_config={"webhook_url": "https://hooks.slack.com/..."},
-            depends_on=[]
+            depends_on=[],
         )
 
         assert node.plugin == "slack"
@@ -31,30 +31,18 @@ class TestFunctionNodePluginSupport:
         """Test FunctionNode validation when plugin is missing."""
         with pytest.raises(ValidationError):
             FunctionNode(
-                id="test",
-                name="Test Node",
-                function="send_message",
-                depends_on=[]
+                id="test", name="Test Node", function="send_message", depends_on=[]
             )
 
     def test_function_node_missing_function(self):
         """Test FunctionNode validation when function is missing."""
         with pytest.raises(ValidationError):
-            FunctionNode(
-                id="test",
-                name="Test Node",
-                plugin="slack",
-                depends_on=[]
-            )
+            FunctionNode(id="test", name="Test Node", plugin="slack", depends_on=[])
 
     def test_function_node_missing_both(self):
         """Test FunctionNode validation when both plugin and function are missing."""
         with pytest.raises(ValidationError):
-            FunctionNode(
-                id="test",
-                name="Test Node",
-                depends_on=[]
-            )
+            FunctionNode(id="test", name="Test Node", depends_on=[])
 
     def test_function_node_defaults(self):
         """Test FunctionNode defaults."""
@@ -63,7 +51,7 @@ class TestFunctionNodePluginSupport:
             name="Test Node",
             plugin="python",
             function="notify",
-            depends_on=[]
+            depends_on=[],
         )
 
         assert node.function_params == {}
@@ -81,7 +69,7 @@ class TestFunctionNodePluginSupport:
             plugin="python",
             function="notify",
             function_params={"message": "Test notification"},
-            depends_on=[]
+            depends_on=[],
         )
 
         assert notify_node.plugin == "python"
@@ -95,7 +83,7 @@ class TestFunctionNodePluginSupport:
             plugin="python",
             function="sleep",
             function_params={"seconds": 5},
-            depends_on=[]
+            depends_on=[],
         )
 
         assert sleep_node.plugin == "python"
@@ -110,7 +98,7 @@ class TestFunctionNodePluginSupport:
             plugin="python",
             function="throw",
             function_params={},
-            depends_on=[]
+            depends_on=[],
         )
 
         assert node.plugin == "python"

@@ -7,7 +7,10 @@ from pathlib import Path
 import pytest
 
 from src.playbook.infrastructure.parser import RunbookParser
-from src.playbook.infrastructure.variables import VariableManager, VariableValidationError
+from src.playbook.infrastructure.variables import (
+    VariableManager,
+    VariableValidationError,
+)
 
 
 class TestRunbookParserVariables:
@@ -34,7 +37,9 @@ prompt_after = "Ready to start?"
 description = "Start the workflow"
 depends_on = []
 """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.playbook.toml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".playbook.toml", delete=False
+        ) as f:
             f.write(toml_content)
             f.flush()
 
@@ -45,7 +50,9 @@ depends_on = []
             finally:
                 Path(f.name).unlink()
 
-    def test_given_runbook_with_simple_variables_when_parsing_then_substitutes_values(self):
+    def test_given_runbook_with_simple_variables_when_parsing_then_substitutes_values(
+        self,
+    ):
         """Test parsing runbook with simple variable substitution."""
         toml_content = """
 [variables]
@@ -65,7 +72,9 @@ command_name = "echo 'Deploying {{APP_NAME}} {{VERSION}}'"
 description = "Deploy {{APP_NAME}}"
 depends_on = []
 """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.playbook.toml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".playbook.toml", delete=False
+        ) as f:
             f.write(toml_content)
             f.flush()
 
@@ -82,7 +91,9 @@ depends_on = []
             finally:
                 Path(f.name).unlink()
 
-    def test_given_runbook_with_defaults_when_parsing_without_variables_then_uses_defaults(self):
+    def test_given_runbook_with_defaults_when_parsing_without_variables_then_uses_defaults(
+        self,
+    ):
         """Test parsing uses default values when no variables provided."""
         toml_content = """
 [variables]
@@ -102,7 +113,9 @@ command_name = "kubectl apply -f {{APP_NAME}}-{{ENVIRONMENT}}.yaml"
 description = "Deploy to {{ENVIRONMENT}}"
 depends_on = []
 """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.playbook.toml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".playbook.toml", delete=False
+        ) as f:
             f.write(toml_content)
             f.flush()
 
@@ -118,7 +131,9 @@ depends_on = []
             finally:
                 Path(f.name).unlink()
 
-    def test_given_runbook_with_required_variables_when_parsing_without_them_then_raises_error(self):
+    def test_given_runbook_with_required_variables_when_parsing_without_them_then_raises_error(
+        self,
+    ):
         """Test parsing with missing required variables raises error."""
         toml_content = """
 [variables]
@@ -136,7 +151,9 @@ type = "Manual"
 description = "Start"
 depends_on = []
 """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.playbook.toml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".playbook.toml", delete=False
+        ) as f:
             f.write(toml_content)
             f.flush()
 
@@ -166,7 +183,9 @@ command_name = "server --port={{PORT}} {% if DEBUG %}--debug{% endif %}"
 description = "Start server"
 depends_on = []
 """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.playbook.toml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".playbook.toml", delete=False
+        ) as f:
             f.write(toml_content)
             f.flush()
 
@@ -179,7 +198,9 @@ depends_on = []
             finally:
                 Path(f.name).unlink()
 
-    def test_given_runbook_with_choices_when_parsing_with_invalid_choice_then_raises_error(self):
+    def test_given_runbook_with_choices_when_parsing_with_invalid_choice_then_raises_error(
+        self,
+    ):
         """Test parsing with invalid choice raises error."""
         toml_content = """
 [variables]
@@ -197,18 +218,24 @@ type = "Manual"
 description = "Start"
 depends_on = []
 """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.playbook.toml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".playbook.toml", delete=False
+        ) as f:
             f.write(toml_content)
             f.flush()
 
             try:
                 variables = {"ENVIRONMENT": "invalid"}
-                with pytest.raises(VariableValidationError, match="not in allowed choices"):
+                with pytest.raises(
+                    VariableValidationError, match="not in allowed choices"
+                ):
                     self.parser.parse(f.name, variables=variables)
             finally:
                 Path(f.name).unlink()
 
-    def test_given_runbook_with_complex_jinja_when_parsing_then_handles_advanced_features(self):
+    def test_given_runbook_with_complex_jinja_when_parsing_then_handles_advanced_features(
+        self,
+    ):
         """Test parsing with complex Jinja2 features within TOML values."""
         toml_content = """
 [variables]
@@ -236,19 +263,28 @@ command_name = "{% if not SKIP_TESTS %}run-tests --env={{ENVIRONMENT}}{% else %}
 description = "{% if not SKIP_TESTS %}Run integration tests{% else %}Skip tests{% endif %}"
 depends_on = ["deploy_all"]
 """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.playbook.toml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".playbook.toml", delete=False
+        ) as f:
             f.write(toml_content)
             f.flush()
 
             try:
-                variables = {"SERVICES": ["api", "worker"], "ENVIRONMENT": "prod", "SKIP_TESTS": False}
+                variables = {
+                    "SERVICES": ["api", "worker"],
+                    "ENVIRONMENT": "prod",
+                    "SKIP_TESTS": False,
+                }
                 runbook = self.parser.parse(f.name, variables=variables)
 
                 assert "deploy_all" in runbook.nodes
                 assert "conditional_test" in runbook.nodes
 
                 deploy_node = runbook.nodes["deploy_all"]
-                assert deploy_node.command_name == "deploy api --env=prod && deploy worker --env=prod && echo 'All services deployed'"
+                assert (
+                    deploy_node.command_name
+                    == "deploy api --env=prod && deploy worker --env=prod && echo 'All services deployed'"
+                )
                 assert deploy_node.description == "Deploy all services: api, worker"
                 assert deploy_node.skip is False
 
@@ -258,7 +294,9 @@ depends_on = ["deploy_all"]
             finally:
                 Path(f.name).unlink()
 
-    def test_given_runbook_with_nested_data_when_parsing_then_substitutes_recursively(self):
+    def test_given_runbook_with_nested_data_when_parsing_then_substitutes_recursively(
+        self,
+    ):
         """Test parsing substitutes variables in nested data structures."""
         toml_content = """
 [variables]
@@ -285,7 +323,9 @@ timeout = "{{TIMEOUT}}"
 app = "{{APP_NAME}}"
 env = "production"
 """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.playbook.toml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".playbook.toml", delete=False
+        ) as f:
             f.write(toml_content)
             f.flush()
 
@@ -301,7 +341,9 @@ env = "production"
             finally:
                 Path(f.name).unlink()
 
-    def test_given_runbook_when_getting_variable_definitions_then_returns_definitions(self):
+    def test_given_runbook_when_getting_variable_definitions_then_returns_definitions(
+        self,
+    ):
         """Test extracting variable definitions without full parsing."""
         toml_content = """
 [variables]
@@ -321,7 +363,9 @@ type = "Manual"
 description = "Start"
 depends_on = []
 """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.playbook.toml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".playbook.toml", delete=False
+        ) as f:
             f.write(toml_content)
             f.flush()
 
@@ -346,7 +390,9 @@ depends_on = []
             finally:
                 Path(f.name).unlink()
 
-    def test_given_runbook_with_simple_variable_syntax_when_parsing_then_creates_definition(self):
+    def test_given_runbook_with_simple_variable_syntax_when_parsing_then_creates_definition(
+        self,
+    ):
         """Test simple variable syntax creates proper definition."""
         toml_content = """
 [variables]
@@ -366,7 +412,9 @@ type = "Manual"
 description = "Start"
 depends_on = []
 """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.playbook.toml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".playbook.toml", delete=False
+        ) as f:
             f.write(toml_content)
             f.flush()
 

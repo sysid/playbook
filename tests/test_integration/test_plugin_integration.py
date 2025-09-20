@@ -12,7 +12,10 @@ from src.playbook.infrastructure.parser import RunbookParser
 from src.playbook.infrastructure.variables import VariableManager
 from src.playbook.service.engine import RunbookEngine
 from src.playbook.domain.models import NodeStatus
-from src.playbook.infrastructure.persistence import SQLiteRunRepository, SQLiteNodeExecutionRepository
+from src.playbook.infrastructure.persistence import (
+    SQLiteRunRepository,
+    SQLiteNodeExecutionRepository,
+)
 from src.playbook.infrastructure.process import ShellProcessRunner
 from tests.test_infrastructure.test_plugins.test_plugin import ExampleTestPlugin
 
@@ -47,7 +50,7 @@ class TestPluginIntegration:
             process_runner=process_runner,
             run_repo=run_repo,
             node_repo=node_repo,
-            io_handler=io_handler
+            io_handler=io_handler,
         )
 
         return engine, io_handler
@@ -58,6 +61,7 @@ class TestPluginIntegration:
 
         # Register our test plugin
         from src.playbook.infrastructure.plugin_registry import plugin_registry
+
         plugin_registry.register_plugin("test", ExampleTestPlugin)
 
         # Create a runbook with plugin-based function
@@ -79,7 +83,9 @@ depends_on = []
 """
 
         # Parse the runbook
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.playbook.toml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".playbook.toml", delete=False
+        ) as f:
             f.write(runbook_toml)
             f.flush()
 
@@ -91,7 +97,9 @@ depends_on = []
         engine.execute_node(runbook, "test_function", run_info)
 
         # Verify the function was executed correctly
-        node_executions = engine.node_repo.get_executions(runbook.title, run_info.run_id)
+        node_executions = engine.node_repo.get_executions(
+            runbook.title, run_info.run_id
+        )
         assert len(node_executions) == 1
 
         execution = node_executions[0]
@@ -99,14 +107,16 @@ depends_on = []
         assert execution.status == NodeStatus.OK
         assert execution.result_text == "Echo: Hello from plugin!"
 
-
     def test_plugin_with_configuration(self, engine_with_plugins, temp_db_path):
         """Test plugin execution with configuration."""
         engine, io_handler = engine_with_plugins
 
         # Register our configurable test plugin
-        from tests.test_infrastructure.test_plugins.test_plugin import ConfigurableTestPlugin
+        from tests.test_infrastructure.test_plugins.test_plugin import (
+            ConfigurableTestPlugin,
+        )
         from src.playbook.infrastructure.plugin_registry import plugin_registry
+
         plugin_registry.register_plugin("configurable", ConfigurableTestPlugin)
 
         # Create a runbook with plugin configuration
@@ -129,7 +139,9 @@ depends_on = []
 """
 
         # Parse the runbook
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.playbook.toml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".playbook.toml", delete=False
+        ) as f:
             f.write(runbook_toml)
             f.flush()
 
@@ -141,7 +153,9 @@ depends_on = []
         engine.execute_node(runbook, "greeting", run_info)
 
         # Verify the function was executed correctly with config
-        node_executions = engine.node_repo.get_executions(runbook.title, run_info.run_id)
+        node_executions = engine.node_repo.get_executions(
+            runbook.title, run_info.run_id
+        )
         assert len(node_executions) == 1
 
         execution = node_executions[0]

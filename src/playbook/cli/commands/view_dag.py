@@ -36,7 +36,7 @@ def view_dag(
 • macOS: brew install graphviz
 • Ubuntu/Debian: sudo apt-get install graphviz
 • CentOS/RHEL: sudo yum install graphviz
-• Windows: Download from https://graphviz.org/download/"""
+• Windows: Download from https://graphviz.org/download/""",
             )
 
         # Parse runbook
@@ -46,13 +46,13 @@ def view_dag(
         except FileNotFoundError:
             raise ParseError(
                 f"Runbook file not found: {file}",
-                suggestion="Check the file path and ensure the file exists"
+                suggestion="Check the file path and ensure the file exists",
             )
         except Exception as e:
             raise ParseError(
                 f"Failed to parse runbook: {str(e)}",
                 context={"file": str(file)},
-                suggestion="Check the TOML syntax and ensure all required fields are present"
+                suggestion="Check the TOML syntax and ensure all required fields are present",
             )
 
         # Always save PNG in same directory as TOML file
@@ -73,7 +73,7 @@ def view_dag(
                 raise FileOperationError(
                     f"Failed to generate DOT file: {str(e)}",
                     context={"dot_file": str(dot_file)},
-                    suggestion="Check file permissions and disk space"
+                    suggestion="Check file permissions and disk space",
                 )
 
             # Convert DOT to PNG using Graphviz
@@ -89,7 +89,7 @@ def view_dag(
                 raise SystemDependencyError(
                     f"Graphviz conversion failed: {e.stderr}",
                     context={"command": "dot -Tpng", "stderr": e.stderr},
-                    suggestion="Check that Graphviz is properly installed and the DOT file is valid"
+                    suggestion="Check that Graphviz is properly installed and the DOT file is valid",
                 )
 
             # Open the PNG file unless disabled
@@ -125,4 +125,4 @@ def view_dag(
                 dot_file.unlink()
 
     except Exception as e:
-        handle_error_and_exit(e, "DAG visualization", ctx.params.get('verbose', False))
+        handle_error_and_exit(e, "DAG visualization", ctx.params.get("verbose", False))

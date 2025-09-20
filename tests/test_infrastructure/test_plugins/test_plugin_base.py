@@ -7,7 +7,7 @@ from src.playbook.domain.plugins import (
     ParameterDef,
     FunctionSignature,
     PluginMetadata,
-    Plugin
+    Plugin,
 )
 from tests.test_infrastructure.test_plugins.test_plugin import ExampleTestPlugin
 
@@ -21,7 +21,7 @@ class TestPluginBaseClasses:
             type="str",
             required=True,
             description="Test parameter",
-            choices=["a", "b", "c"]
+            choices=["a", "b", "c"],
         )
 
         assert param.type == "str"
@@ -45,8 +45,8 @@ class TestPluginBaseClasses:
             description="Test function",
             parameters={
                 "param1": ParameterDef(type="str", required=True),
-                "param2": ParameterDef(type="int", required=False, default=42)
-            }
+                "param2": ParameterDef(type="int", required=False, default=42),
+            },
         )
 
         assert sig.name == "test_func"
@@ -63,11 +63,8 @@ class TestPluginBaseClasses:
             author="Test Author",
             description="Test plugin",
             functions={
-                "func1": FunctionSignature(
-                    name="func1",
-                    description="Function 1"
-                )
-            }
+                "func1": FunctionSignature(name="func1", description="Function 1")
+            },
         )
 
         assert metadata.name == "test_plugin"
@@ -96,7 +93,9 @@ class TestPluginBaseClasses:
         plugin.initialize({})
 
         with pytest.raises(ValueError, match="Unknown parameter 'unknown'"):
-            plugin.validate_function_params("echo", {"message": "hello", "unknown": "value"})
+            plugin.validate_function_params(
+                "echo", {"message": "hello", "unknown": "value"}
+            )
 
     def test_plugin_parameter_validation_type_checking(self):
         """Test parameter type validation."""
@@ -104,11 +103,16 @@ class TestPluginBaseClasses:
         plugin.initialize({})
 
         # String parameter with integer value
-        with pytest.raises(ValueError, match="Cannot convert parameter 'message' value '123' \\(type: int\\) to str"):
+        with pytest.raises(
+            ValueError,
+            match="Cannot convert parameter 'message' value '123' \\(type: int\\) to str",
+        ):
             plugin.validate_function_params("echo", {"message": 123})
 
         # Integer parameter with string value
-        with pytest.raises(ValueError, match="Cannot convert parameter 'a' value 'not_a_number' to int"):
+        with pytest.raises(
+            ValueError, match="Cannot convert parameter 'a' value 'not_a_number' to int"
+        ):
             plugin.validate_function_params("add", {"a": "not_a_number", "b": 2})
 
     def test_plugin_parameter_validation_unknown_function(self):
@@ -121,6 +125,7 @@ class TestPluginBaseClasses:
 
     def test_plugin_parameter_validation_choices(self):
         """Test parameter validation with choices."""
+
         # Create a plugin with choice-constrained parameter
         class ChoiceTestPlugin(Plugin):
             def get_metadata(self):
@@ -135,13 +140,11 @@ class TestPluginBaseClasses:
                             description="Choose from options",
                             parameters={
                                 "option": ParameterDef(
-                                    type="str",
-                                    required=True,
-                                    choices=["A", "B", "C"]
+                                    type="str", required=True, choices=["A", "B", "C"]
                                 )
-                            }
+                            },
                         )
-                    }
+                    },
                 )
 
             def initialize(self, config):
@@ -159,11 +162,14 @@ class TestPluginBaseClasses:
         plugin.validate_function_params("choose", {"option": "A"})
 
         # Invalid choice
-        with pytest.raises(ValueError, match="Parameter 'option' must be one of \\['A', 'B', 'C'\\]"):
+        with pytest.raises(
+            ValueError, match="Parameter 'option' must be one of \\['A', 'B', 'C'\\]"
+        ):
             plugin.validate_function_params("choose", {"option": "D"})
 
     def test_plugin_parameter_validation_numeric_range(self):
         """Test parameter validation with numeric ranges."""
+
         class RangeTestPlugin(Plugin):
             def get_metadata(self):
                 return PluginMetadata(
@@ -180,11 +186,11 @@ class TestPluginBaseClasses:
                                     type="int",
                                     required=True,
                                     min_value=1,
-                                    max_value=100
+                                    max_value=100,
                                 )
-                            }
+                            },
                         )
-                    }
+                    },
                 )
 
             def initialize(self, config):
@@ -211,6 +217,7 @@ class TestPluginBaseClasses:
 
     def test_plugin_parameter_validation_pattern(self):
         """Test parameter validation with regex patterns."""
+
         class PatternTestPlugin(Plugin):
             def get_metadata(self):
                 return PluginMetadata(
@@ -226,11 +233,11 @@ class TestPluginBaseClasses:
                                 "email": ParameterDef(
                                     type="str",
                                     required=True,
-                                    pattern=r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+                                    pattern=r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$",
                                 )
-                            }
+                            },
                         )
-                    }
+                    },
                 )
 
             def initialize(self, config):
@@ -248,7 +255,9 @@ class TestPluginBaseClasses:
         plugin.validate_function_params("email", {"email": "test@example.com"})
 
         # Invalid email
-        with pytest.raises(ValueError, match="Parameter 'email' does not match required pattern"):
+        with pytest.raises(
+            ValueError, match="Parameter 'email' does not match required pattern"
+        ):
             plugin.validate_function_params("email", {"email": "invalid-email"})
 
 

@@ -26,7 +26,7 @@ from ..domain.ports import (
 from ..domain.plugins import (
     PluginNotFoundError,
     PluginExecutionError,
-    FunctionNotFoundError
+    FunctionNotFoundError,
 )
 from ..infrastructure.plugin_registry import plugin_registry
 
@@ -60,9 +60,12 @@ class RunbookEngine:
 
             # Register built-in Python plugin for backward compatibility
             from ..infrastructure.plugins.python_plugin import PythonPlugin
+
             plugin_registry.register_plugin("python", PythonPlugin)
 
-            logger.debug(f"Plugin system initialized with {len(plugin_registry.list_plugins())} plugins")
+            logger.debug(
+                f"Plugin system initialized with {len(plugin_registry.list_plugins())} plugins"
+            )
         except Exception as e:
             logger.error(f"Failed to initialize plugin system: {e}")
 
@@ -712,7 +715,9 @@ class RunbookEngine:
                 duration_ms=duration_ms,
             )
 
-    def _get_latest_executions_per_node(self, executions: List[NodeExecution]) -> Dict[str, NodeExecution]:
+    def _get_latest_executions_per_node(
+        self, executions: List[NodeExecution]
+    ) -> Dict[str, NodeExecution]:
         """Get the latest execution attempt for each node.
 
         Args:
@@ -724,7 +729,10 @@ class RunbookEngine:
         latest_executions = {}
         for execution in executions:
             node_id = execution.node_id
-            if node_id not in latest_executions or execution.attempt > latest_executions[node_id].attempt:
+            if (
+                node_id not in latest_executions
+                or execution.attempt > latest_executions[node_id].attempt
+            ):
                 latest_executions[node_id] = execution
         return latest_executions
 

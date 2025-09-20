@@ -244,17 +244,11 @@ plugin_config = { webhook_url = "${SUCCESS_WEBHOOK}" }  # Node-specific override
 #### When to Create a Plugin
 
 Create a separate plugin when you need:
-- **Custom business logic** not covered by built-in functions
 - **External service integrations** (APIs, databases, cloud services)
 - **Specialized data processing** or transformations
 - **Domain-specific functionality** unique to your use case
 
-**Do NOT try to:**
-- Call arbitrary Python functions dynamically (not supported)
-- Execute native Python modules directly (security risk)
-- Bypass the plugin interface (breaks the architecture)
-
-The built-in Python plugin provides only basic utilities (`notify`, `sleep`, `throw`). All custom functionality must be implemented as proper plugins.
+The built-in Python plugin provides basic utilities (`notify`, `sleep`, `throw`) as demonstrations. 
 
 #### Creating a Plugin
 
@@ -498,16 +492,7 @@ depends_on = ["e"]
 To run and validate your workflow logic, use:
 
 ```bash
+make test  # or
 pytest tests/
 ```
 
-
-## 📖 License
-
-MIT License.  
-Copyright © 2025.
-
-
-## 🧠 Inspiration
-
-This tool is inspired by Airflow, Argo Workflows, and the need for a **lightweight, local-first** DAG executor for operational workflows.

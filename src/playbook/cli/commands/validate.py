@@ -6,7 +6,13 @@ from typing import Optional, List
 
 import typer
 
-from ..common import console, get_engine, get_parser, get_variable_manager, handle_error_and_exit
+from ..common import (
+    console,
+    get_engine,
+    get_parser,
+    get_variable_manager,
+    handle_error_and_exit,
+)
 from ...domain.models import NodeType
 from ...domain.exceptions import ParseError, ValidationError
 
@@ -15,7 +21,9 @@ def validate(
     ctx: typer.Context,
     file: Path = typer.Argument(..., help="Runbook file path"),
     strict: bool = typer.Option(False, "--strict", help="Enable strict validation"),
-    check_vars: bool = typer.Option(False, "--check-vars", help="Show variable information"),
+    check_vars: bool = typer.Option(
+        False, "--check-vars", help="Show variable information"
+    ),
     var: Optional[List[str]] = typer.Option(
         None, "--var", help="Set variable in KEY=VALUE format"
     ),
@@ -23,7 +31,9 @@ def validate(
         None, "--vars-file", help="Load variables from file"
     ),
     vars_env: Optional[str] = typer.Option(
-        "PLAYBOOK_VAR_", "--vars-env", help="Environment variable prefix for loading variables"
+        "PLAYBOOK_VAR_",
+        "--vars-env",
+        help="Environment variable prefix for loading variables",
     ),
 ):
     """Validate a runbook file"""
@@ -42,7 +52,7 @@ def validate(
             except FileNotFoundError:
                 raise ParseError(
                     f"Runbook file not found: {file}",
-                    suggestion="Check the file path and ensure the file exists"
+                    suggestion="Check the file path and ensure the file exists",
                 )
 
             if check_vars:
@@ -61,13 +71,13 @@ def validate(
         except FileNotFoundError:
             raise ParseError(
                 f"Runbook file not found: {file}",
-                suggestion="Check the file path and ensure the file exists"
+                suggestion="Check the file path and ensure the file exists",
             )
         except Exception as e:
             raise ParseError(
                 f"Failed to parse runbook: {str(e)}",
                 context={"file": str(file)},
-                suggestion="Check the TOML syntax and ensure all required fields are present"
+                suggestion="Check the TOML syntax and ensure all required fields are present",
             )
 
         # Validate runbook
@@ -77,12 +87,13 @@ def validate(
         if errors:
             # Use error handler for validation errors
             from ..error_handler import ErrorHandler
-            error_handler = ErrorHandler(console, ctx.params.get('verbose', False))
+
+            error_handler = ErrorHandler(console, ctx.params.get("verbose", False))
             error_handler.format_validation_errors(errors)
             raise ValidationError(
                 f"Found {len(errors)} validation error(s)",
                 context={"errors": errors, "file": str(file)},
-                suggestion="Fix the validation errors and try again"
+                suggestion="Fix the validation errors and try again",
             )
         else:
             console.print("[bold green]✅ Runbook is valid![/bold green]")
@@ -116,23 +127,26 @@ def validate(
             # Show helpful suggestions for improvement
             suggestions = []
             if skipped_count > 0:
-                suggestions.append("Consider reviewing skipped nodes to ensure they're intentionally disabled")
+                suggestions.append(
+                    "Consider reviewing skipped nodes to ensure they're intentionally disabled"
+                )
             if len(runbook.nodes) > 20:
-                suggestions.append("Large runbooks may benefit from being split into smaller, focused workflows")
+                suggestions.append(
+                    "Large runbooks may benefit from being split into smaller, focused workflows"
+                )
 
             if suggestions:
                 from ..error_handler import ErrorHandler
+
                 error_handler = ErrorHandler(console, False)
                 error_handler.format_suggestions(suggestions)
 
     except Exception as e:
-        handle_error_and_exit(e, "Runbook validation", ctx.params.get('verbose', False))
+        handle_error_and_exit(e, "Runbook validation", ctx.params.get("verbose", False))
 
 
 def _collect_variables(
-    var: Optional[List[str]],
-    vars_file: Optional[str],
-    vars_env: str
+    var: Optional[List[str]], vars_file: Optional[str], vars_env: str
 ) -> dict:
     """Collect variables from all sources."""
     var_manager = get_variable_manager(interactive=False)
@@ -156,9 +170,7 @@ def _collect_variables(
 
     # Merge with priority
     return var_manager.merge_variables(
-        cli_vars=cli_vars,
-        file_vars=file_vars,
-        env_vars=env_vars
+        cli_vars=cli_vars, file_vars=file_vars, env_vars=env_vars
     )
 
 
@@ -180,12 +192,16 @@ def _display_variable_information(variable_definitions: dict) -> None:
             optional_vars.append((name, definition))
 
     if required_vars:
-        console.print(f"\n[bold red]Required variables ({len(required_vars)}):[/bold red]")
+        console.print(
+            f"\n[bold red]Required variables ({len(required_vars)}):[/bold red]"
+        )
         for name, definition in required_vars:
             _display_variable_details(name, definition)
 
     if optional_vars:
-        console.print(f"\n[bold blue]Optional variables ({len(optional_vars)}):[/bold blue]")
+        console.print(
+            f"\n[bold blue]Optional variables ({len(optional_vars)}):[/bold blue]"
+        )
         for name, definition in optional_vars:
             _display_variable_details(name, definition)
 

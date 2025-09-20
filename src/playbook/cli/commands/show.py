@@ -35,7 +35,7 @@ def show(
                 raise DatabaseError(
                     f"Failed to retrieve runs for workflow '{workflow}': {str(e)}",
                     context={"workflow": workflow},
-                    suggestion="Check database connectivity and ensure the workflow exists"
+                    suggestion="Check database connectivity and ensure the workflow exists",
                 )
 
             if not runs:
@@ -73,7 +73,7 @@ def show(
                 raise DatabaseError(
                     f"Failed to retrieve run {run_id} for workflow '{workflow}': {str(e)}",
                     context={"workflow": workflow, "run_id": run_id},
-                    suggestion="Check that the run ID exists for this workflow"
+                    suggestion="Check that the run ID exists for this workflow",
                 )
 
             console.print(f"[bold]Run: {workflow} #{run_id}[/bold]")
@@ -130,4 +130,4 @@ def show(
                 console.print(table)
 
     except Exception as e:
-        handle_error_and_exit(e, "Show run details", ctx.params.get('verbose', False))
+        handle_error_and_exit(e, "Show run details", ctx.params.get("verbose", False))

@@ -19,11 +19,13 @@ from ..domain.models import VariableDefinition
 
 class VariableValidationError(ValidationError):
     """Error raised when variable validation fails."""
+
     pass
 
 
 class TemplateRenderError(ValidationError):
     """Error raised when template rendering fails."""
+
     pass
 
 
@@ -40,23 +42,25 @@ class VariableManager:
         # Use sandboxed environment for security
         self.jinja_env = SandboxedEnvironment(
             # Keep Jinja2 syntax simple and clear
-            variable_start_string='{{',
-            variable_end_string='}}',
-            block_start_string='{%',
-            block_end_string='%}',
+            variable_start_string="{{",
+            variable_end_string="}}",
+            block_start_string="{%",
+            block_end_string="%}",
             # Enable loop controls and other useful features
-            extensions=['jinja2.ext.loopcontrols'],
+            extensions=["jinja2.ext.loopcontrols"],
             # Strict undefined variables
-            undefined=StrictUndefined
+            undefined=StrictUndefined,
         )
 
         # Add useful filters
-        self.jinja_env.filters.update({
-            'env': self._env_filter,
-        })
+        self.jinja_env.filters.update(
+            {
+                "env": self._env_filter,
+            }
+        )
 
     @staticmethod
-    def _env_filter(var_name: str, default: str = '') -> str:
+    def _env_filter(var_name: str, default: str = "") -> str:
         """Jinja2 filter to get environment variables."""
         return os.getenv(var_name, default)
 
@@ -78,35 +82,35 @@ class VariableManager:
         if not path.exists():
             raise ConfigurationError(
                 f"Variable file not found: {file_path}",
-                suggestion="Check the file path and ensure the file exists"
+                suggestion="Check the file path and ensure the file exists",
             )
 
         try:
-            with open(path, 'r', encoding='utf-8') as f:
+            with open(path, "r", encoding="utf-8") as f:
                 content = f.read()
 
             # Detect format by extension
             suffix = path.suffix.lower()
 
-            if suffix == '.toml':
+            if suffix == ".toml":
                 # Use tomllib for TOML files
-                with open(path, 'rb') as f:
+                with open(path, "rb") as f:
                     return tomllib.load(f)
 
-            elif suffix == '.json':
+            elif suffix == ".json":
                 return json.loads(content)
 
-            elif suffix in ['.yaml', '.yml']:
+            elif suffix in [".yaml", ".yml"]:
                 return yaml.safe_load(content) or {}
 
-            elif suffix == '.env':
+            elif suffix == ".env":
                 # Parse .env format: KEY=value
                 variables = {}
                 for line in content.splitlines():
                     line = line.strip()
-                    if line and not line.startswith('#') and '=' in line:
-                        key, value = line.split('=', 1)
-                        variables[key.strip()] = value.strip().strip('"\'')
+                    if line and not line.startswith("#") and "=" in line:
+                        key, value = line.split("=", 1)
+                        variables[key.strip()] = value.strip().strip("\"'")
                 return variables
 
             else:
@@ -119,18 +123,18 @@ class VariableManager:
                     except yaml.YAMLError:
                         raise ConfigurationError(
                             f"Unknown file format for {file_path}",
-                            suggestion="Use .toml, .json, .yaml, or .env extension"
+                            suggestion="Use .toml, .json, .yaml, or .env extension",
                         )
 
         except (OSError, PermissionError) as e:
             raise ConfigurationError(
                 f"Cannot read variable file {file_path}: {e}",
-                suggestion="Check file permissions and disk space"
+                suggestion="Check file permissions and disk space",
             )
         except (json.JSONDecodeError, yaml.YAMLError, tomllib.TOMLDecodeError) as e:
             raise ConfigurationError(
                 f"Cannot parse variable file {file_path}: {e}",
-                suggestion="Check file syntax and format"
+                suggestion="Check file syntax and format",
             )
 
     def load_variables_from_env(self, prefix: str = "PLAYBOOK_VAR_") -> Dict[str, Any]:
@@ -145,9 +149,9 @@ class VariableManager:
         variables = {}
         for key, value in os.environ.items():
             if key.startswith(prefix):
-                var_name = key[len(prefix):]
+                var_name = key[len(prefix) :]
                 # Try to parse as JSON for complex types (arrays, objects), fall back to string
-                if value.startswith(('[', '{')):
+                if value.startswith(("[", "{")):
                     try:
                         variables[var_name] = json.loads(value)
                     except (json.JSONDecodeError, ValueError):
@@ -170,18 +174,18 @@ class VariableManager:
         """
         variables = {}
         for var_string in var_strings:
-            if '=' not in var_string:
+            if "=" not in var_string:
                 raise ConfigurationError(
                     f"Invalid variable format: {var_string}",
-                    suggestion="Use KEY=VALUE format, e.g., --var ENVIRONMENT=production"
+                    suggestion="Use KEY=VALUE format, e.g., --var ENVIRONMENT=production",
                 )
 
-            key, value = var_string.split('=', 1)
+            key, value = var_string.split("=", 1)
             key = key.strip()
             value = value.strip()
 
             # Try to parse as JSON for complex types (arrays, objects), fall back to string
-            if value.startswith(('[', '{')):
+            if value.startswith(("[", "{")):
                 try:
                     variables[key] = json.loads(value)
                 except (json.JSONDecodeError, ValueError):
@@ -196,7 +200,7 @@ class VariableManager:
         cli_vars: Optional[Dict[str, Any]] = None,
         file_vars: Optional[Dict[str, Any]] = None,
         env_vars: Optional[Dict[str, Any]] = None,
-        defaults: Optional[Dict[str, Any]] = None
+        defaults: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Merge variables from different sources with priority order.
 
@@ -221,9 +225,7 @@ class VariableManager:
         return merged
 
     def validate_variables(
-        self,
-        variables: Dict[str, Any],
-        definitions: Dict[str, VariableDefinition]
+        self, variables: Dict[str, Any], definitions: Dict[str, VariableDefinition]
     ) -> None:
         """Validate variables against their definitions.
 
@@ -264,7 +266,7 @@ class VariableManager:
         if errors:
             raise VariableValidationError(
                 f"Variable validation failed: {'; '.join(errors)}",
-                suggestion="Check variable types and constraints in your workflow definition"
+                suggestion="Check variable types and constraints in your workflow definition",
             )
 
     @staticmethod
@@ -272,30 +274,30 @@ class VariableManager:
         """Validate and convert variable type."""
         expected_type = definition.type
 
-        if expected_type == 'string':
+        if expected_type == "string":
             return str(value)
-        elif expected_type == 'int':
+        elif expected_type == "int":
             if isinstance(value, bool):  # bool is subclass of int in Python
                 raise ValueError("expected int, got bool")
             try:
                 return int(value)
             except (ValueError, TypeError):
                 raise ValueError(f"expected int, got {type(value).__name__}")
-        elif expected_type == 'float':
+        elif expected_type == "float":
             try:
                 return float(value)
             except (ValueError, TypeError):
                 raise ValueError(f"expected float, got {type(value).__name__}")
-        elif expected_type == 'bool':
+        elif expected_type == "bool":
             if isinstance(value, bool):
                 return value
             if isinstance(value, str):
-                if value.lower() in ('true', '1', 'yes', 'on'):
+                if value.lower() in ("true", "1", "yes", "on"):
                     return True
-                elif value.lower() in ('false', '0', 'no', 'off'):
+                elif value.lower() in ("false", "0", "no", "off"):
                     return False
             raise ValueError(f"expected bool, got {type(value).__name__}")
-        elif expected_type == 'list':
+        elif expected_type == "list":
             if not isinstance(value, list):
                 raise ValueError(f"expected list, got {type(value).__name__}")
             return value
@@ -304,20 +306,18 @@ class VariableManager:
 
     @staticmethod
     def _validate_variable_constraints(
-        name: str,
-        value: Any,
-        definition: VariableDefinition
+        name: str, value: Any, definition: VariableDefinition
     ) -> None:
         """Validate variable against constraints."""
         # Choices validation
         if definition.choices and value not in definition.choices:
-            choices_str = ', '.join(str(c) for c in definition.choices)
+            choices_str = ", ".join(str(c) for c in definition.choices)
             raise ValueError(
                 f"Variable '{name}' value '{value}' not in allowed choices: [{choices_str}]"
             )
 
         # Numeric constraints
-        if definition.type in ['int', 'float']:
+        if definition.type in ["int", "float"]:
             if definition.min is not None and value < definition.min:
                 raise ValueError(
                     f"Variable '{name}' value {value} is below minimum {definition.min}"
@@ -328,7 +328,7 @@ class VariableManager:
                 )
 
         # String pattern validation
-        if definition.type == 'string' and definition.pattern:
+        if definition.type == "string" and definition.pattern:
             if not re.match(definition.pattern, str(value)):
                 raise ValueError(
                     f"Variable '{name}' value '{value}' does not match pattern '{definition.pattern}'"
@@ -336,8 +336,7 @@ class VariableManager:
 
     @staticmethod
     def get_missing_required(
-        definitions: Dict[str, VariableDefinition],
-        provided: Dict[str, Any]
+        definitions: Dict[str, VariableDefinition], provided: Dict[str, Any]
     ) -> List[str]:
         """Get list of missing required variables.
 
@@ -355,9 +354,7 @@ class VariableManager:
         return missing
 
     def prompt_for_missing_variables(
-        self,
-        missing: List[str],
-        definitions: Dict[str, VariableDefinition]
+        self, missing: List[str], definitions: Dict[str, VariableDefinition]
     ) -> Dict[str, Any]:
         """Interactively prompt for missing required variables.
 
@@ -380,7 +377,7 @@ class VariableManager:
             if definition.description:
                 prompt_msg += f" ({definition.description})"
             if definition.choices:
-                choices_str = ', '.join(str(c) for c in definition.choices)
+                choices_str = ", ".join(str(c) for c in definition.choices)
                 prompt_msg += f" [choices: {choices_str}]"
 
             # Get value with validation
@@ -388,7 +385,9 @@ class VariableManager:
                 try:
                     value = Prompt.ask(prompt_msg)
                     validated_value = self._validate_variable_type(value, definition)
-                    self._validate_variable_constraints(name, validated_value, definition)
+                    self._validate_variable_constraints(
+                        name, validated_value, definition
+                    )
                     prompted[name] = validated_value
                     break
                 except ValueError as e:
@@ -416,10 +415,12 @@ class VariableManager:
             raise TemplateRenderError(
                 f"Template rendering failed: {e}",
                 context={"template": template_str, "variables": list(variables.keys())},
-                suggestion="Check template syntax and ensure all variables are defined"
+                suggestion="Check template syntax and ensure all variables are defined",
             )
 
-    def substitute_in_dict(self, data: Dict[str, Any], variables: Dict[str, Any]) -> Dict[str, Any]:
+    def substitute_in_dict(
+        self, data: Dict[str, Any], variables: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Recursively substitute variables in dictionary values.
 
         Args:
@@ -441,7 +442,9 @@ class VariableManager:
                 result[key] = value
         return result
 
-    def _substitute_in_list(self, data: List[Any], variables: Dict[str, Any]) -> List[Any]:
+    def _substitute_in_list(
+        self, data: List[Any], variables: Dict[str, Any]
+    ) -> List[Any]:
         """Recursively substitute variables in list values."""
         result = []
         for item in data:

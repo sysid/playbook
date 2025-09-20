@@ -32,7 +32,6 @@ class ProcessRunner(Protocol):
         pass
 
 
-
 class RunRepository(ABC):
     """Interface for run persistence"""
 

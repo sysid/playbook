@@ -11,7 +11,7 @@ from ...domain.plugins import (
     FunctionSignature,
     ParameterDef,
     ReturnDef,
-    PluginExecutionError
+    PluginExecutionError,
 )
 
 logger = logging.getLogger(__name__)
@@ -41,21 +41,16 @@ class PythonPlugin(Plugin):
                     description="Send a notification with the given message",
                     parameters={
                         "message": ParameterDef(
-                            type="str",
-                            required=True,
-                            description="The message to send"
+                            type="str", required=True, description="The message to send"
                         )
                     },
-                    returns=ReturnDef(
-                        type="str",
-                        description="Confirmation message"
-                    ),
+                    returns=ReturnDef(type="str", description="Confirmation message"),
                     examples=[
                         {
                             "message": "Deployment completed successfully",
-                            "expected_result": "Notification sent: Deployment completed successfully"
+                            "expected_result": "Notification sent: Deployment completed successfully",
                         }
-                    ]
+                    ],
                 ),
                 "sleep": FunctionSignature(
                     name="sleep",
@@ -66,19 +61,11 @@ class PythonPlugin(Plugin):
                             required=True,
                             description="Number of seconds to sleep",
                             min_value=0,
-                            max_value=3600
+                            max_value=3600,
                         )
                     },
-                    returns=ReturnDef(
-                        type="str",
-                        description="Completion message"
-                    ),
-                    examples=[
-                        {
-                            "seconds": 5,
-                            "expected_result": "done"
-                        }
-                    ]
+                    returns=ReturnDef(type="str", description="Completion message"),
+                    examples=[{"seconds": 5, "expected_result": "done"}],
                 ),
                 "throw": FunctionSignature(
                     name="throw",
@@ -86,17 +73,15 @@ class PythonPlugin(Plugin):
                     parameters={},
                     returns=ReturnDef(
                         type="str",
-                        description="Never returns - always raises exception"
+                        description="Never returns - always raises exception",
                     ),
                     examples=[
-                        {
-                            "expected_error": "Intentional exception for testing purposes"
-                        }
-                    ]
-                )
+                        {"expected_error": "Intentional exception for testing purposes"}
+                    ],
+                ),
             },
             homepage="https://github.com/sysid/playbook",
-            documentation="Built-in utility functions plugin providing common workflow operations"
+            documentation="Built-in utility functions plugin providing common workflow operations",
         )
 
     def initialize(self, config: Dict[str, Any]) -> None:
@@ -136,8 +121,9 @@ class PythonPlugin(Plugin):
         except Exception as e:
             if isinstance(e, PluginExecutionError):
                 raise
-            raise PluginExecutionError(f"Failed to execute function {function_name}: {e}")
-
+            raise PluginExecutionError(
+                f"Failed to execute function {function_name}: {e}"
+            )
 
     def _notify(self, message: str) -> str:
         """Send a notification with the given message.
@@ -178,4 +164,3 @@ class PythonPlugin(Plugin):
         """Clean up plugin resources."""
         # Python plugin doesn't have resources to clean up
         logger.debug("PythonPlugin cleaned up")
-

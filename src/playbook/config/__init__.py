@@ -8,7 +8,7 @@ from .manager import (
     LoggingConfig,
     UIConfig,
     ConfigManager,
-    config_manager
+    config_manager,
 )
 
 
@@ -19,5 +19,5 @@ __all__ = [
     "LoggingConfig",
     "UIConfig",
     "ConfigManager",
-    "config_manager"
+    "config_manager",
 ]

@@ -1,7 +1,6 @@
 # src/playbook/cli/commands/info.py
 """Info command implementation."""
 
-
 import typer
 from rich.table import Table
 
@@ -29,7 +28,7 @@ def info(
             raise DatabaseError(
                 f"Failed to connect to statistics database: {str(e)}",
                 context={"database_path": config["state_path"]},
-                suggestion="Check database file permissions and that it has been initialized"
+                suggestion="Check database file permissions and that it has been initialized",
             )
 
         # Get database info
@@ -117,4 +116,6 @@ def info(
                 console.print(f"\n{ddl};")
 
     except Exception as e:
-        handle_error_and_exit(e, "Database statistics", ctx.params.get('verbose', False))
+        handle_error_and_exit(
+            e, "Database statistics", ctx.params.get("verbose", False)
+        )

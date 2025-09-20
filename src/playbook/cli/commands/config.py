@@ -16,9 +16,13 @@ from ...domain.exceptions import ConfigurationError
 def config_cmd(
     ctx: typer.Context,
     show: bool = typer.Option(False, "--show", help="Show current configuration"),
-    init: Optional[str] = typer.Option(None, "--init", help="Initialize config for environment (dev/prod/test)"),
+    init: Optional[str] = typer.Option(
+        None, "--init", help="Initialize config for environment (dev/prod/test)"
+    ),
     validate: bool = typer.Option(False, "--validate", help="Validate configuration"),
-    template: Optional[Path] = typer.Option(None, "--template", help="Create config template at path"),
+    template: Optional[Path] = typer.Option(
+        None, "--template", help="Create config template at path"
+    ),
     env: str = typer.Option("development", "--env", help="Environment for template"),
 ):
     """Manage Playbook configuration."""
@@ -35,7 +39,9 @@ def config_cmd(
             # Show help if no specific action
             console.print(ctx.get_help())
     except Exception as e:
-        handle_error_and_exit(e, "Configuration management", debug=ctx.params.get('verbose', False))
+        handle_error_and_exit(
+            e, "Configuration management", debug=ctx.params.get("verbose", False)
+        )
 
 
 def _show_config():
@@ -68,8 +74,12 @@ def _show_config():
         exec_table.add_column("Value")
         exec_table.add_row("Default Timeout", f"{config.execution.default_timeout}s")
         exec_table.add_row("Max Retries", str(config.execution.max_retries))
-        exec_table.add_row("Interactive Timeout", f"{config.execution.interactive_timeout}s")
-        exec_table.add_row("Parallel Execution", str(config.execution.parallel_execution))
+        exec_table.add_row(
+            "Interactive Timeout", f"{config.execution.interactive_timeout}s"
+        )
+        exec_table.add_row(
+            "Parallel Execution", str(config.execution.parallel_execution)
+        )
         console.print(exec_table)
         console.print()
 
@@ -99,47 +109,53 @@ def _show_config():
     except Exception as e:
         raise ConfigurationError(
             f"Failed to load configuration: {str(e)}",
-            suggestion="Check your configuration file syntax or create a new one with 'playbook config --init'"
+            suggestion="Check your configuration file syntax or create a new one with 'playbook config --init'",
         )
 
 
 def _init_config(environment: str):
     """Initialize configuration for an environment."""
-    valid_envs = ['development', 'testing', 'production', 'dev', 'test', 'prod']
+    valid_envs = ["development", "testing", "production", "dev", "test", "prod"]
 
     # Normalize environment names
-    env_map = {'dev': 'development', 'test': 'testing', 'prod': 'production'}
+    env_map = {"dev": "development", "test": "testing", "prod": "production"}
     environment = env_map.get(environment, environment)
 
-    if environment not in ['development', 'testing', 'production']:
+    if environment not in ["development", "testing", "production"]:
         raise ConfigurationError(
             f"Invalid environment: {environment}",
-            suggestion=f"Use one of: {', '.join(valid_envs)}"
+            suggestion=f"Use one of: {', '.join(valid_envs)}",
         )
 
     # Create config directory
-    config_dir = Path.home() / '.config' / 'playbook'
-    config_path = config_dir / f'{environment}.toml'
+    config_dir = Path.home() / ".config" / "playbook"
+    config_path = config_dir / f"{environment}.toml"
 
     if config_path.exists():
-        if not typer.confirm(f"Configuration file {config_path} already exists. Overwrite?"):
+        if not typer.confirm(
+            f"Configuration file {config_path} already exists. Overwrite?"
+        ):
             console.print("Configuration initialization cancelled.")
             return
 
     try:
         config_manager.create_template(config_path, environment)
-        console.print(f"\n[green]✅ Configuration initialized for {environment} environment[/green]")
+        console.print(
+            f"\n[green]✅ Configuration initialized for {environment} environment[/green]"
+        )
         console.print(f"[dim]Config file: {config_path}[/dim]")
         console.print("\n[yellow]Next steps:[/yellow]")
         console.print("1. Edit the configuration file to customize settings")
         console.print("2. Set PLAYBOOK_ENV environment variable to activate:")
         console.print(f"   [cyan]export PLAYBOOK_ENV={environment}[/cyan]")
-        console.print("3. Validate configuration: [cyan]playbook config --validate[/cyan]")
+        console.print(
+            "3. Validate configuration: [cyan]playbook config --validate[/cyan]"
+        )
 
     except Exception as e:
         raise ConfigurationError(
             f"Failed to initialize configuration: {str(e)}",
-            suggestion="Check file permissions and ensure the directory is writable"
+            suggestion="Check file permissions and ensure the directory is writable",
         )
 
 
@@ -172,18 +188,18 @@ def _validate_config():
     except Exception as e:
         raise ConfigurationError(
             f"Configuration validation failed: {str(e)}",
-            suggestion="Fix the configuration errors and try again"
+            suggestion="Fix the configuration errors and try again",
         )
 
 
 def _create_template(template_path: Path, environment: str):
     """Create a configuration template."""
-    valid_envs = ['development', 'testing', 'production']
+    valid_envs = ["development", "testing", "production"]
 
     if environment not in valid_envs:
         raise ConfigurationError(
             f"Invalid environment: {environment}",
-            suggestion=f"Use one of: {', '.join(valid_envs)}"
+            suggestion=f"Use one of: {', '.join(valid_envs)}",
         )
 
     if template_path.exists():
@@ -206,5 +222,5 @@ def _create_template(template_path: Path, environment: str):
     except Exception as e:
         raise ConfigurationError(
             f"Failed to create template: {str(e)}",
-            suggestion="Check file permissions and ensure the directory is writable"
+            suggestion="Check file permissions and ensure the directory is writable",
         )

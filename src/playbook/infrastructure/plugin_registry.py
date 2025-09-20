@@ -10,7 +10,7 @@ from ..domain.plugins import (
     PluginMetadata,
     PluginError,
     PluginNotFoundError,
-    PluginInitializationError
+    PluginInitializationError,
 )
 
 logger = logging.getLogger(__name__)
@@ -40,7 +40,7 @@ class PluginRegistry:
         """Discover plugins through setuptools entry points."""
         try:
             eps = entry_points()
-            if hasattr(eps, 'select'):  # Python 3.10+
+            if hasattr(eps, "select"):  # Python 3.10+
                 plugin_entries = eps.select(group=self.ENTRY_POINT_GROUP)
             else:  # Python 3.9
                 plugin_entries = eps.get(self.ENTRY_POINT_GROUP, [])
@@ -49,7 +49,9 @@ class PluginRegistry:
                 try:
                     plugin_class = entry_point.load()
                     if not issubclass(plugin_class, Plugin):
-                        logger.warning(f"Entry point {entry_point.name} does not implement Plugin interface")
+                        logger.warning(
+                            f"Entry point {entry_point.name} does not implement Plugin interface"
+                        )
                         continue
 
                     self._plugin_classes[entry_point.name] = plugin_class
@@ -116,7 +118,9 @@ class PluginRegistry:
             return plugin_instance
 
         except Exception as e:
-            raise PluginInitializationError(f"Failed to initialize plugin '{name}': {e}")
+            raise PluginInitializationError(
+                f"Failed to initialize plugin '{name}': {e}"
+            )
 
     def list_plugins(self) -> List[str]:
         """Get list of available plugin names.
@@ -210,15 +214,13 @@ class PluginRegistry:
                     "author": metadata.author,
                     "description": metadata.description,
                     "functions": list(metadata.functions.keys()),
-                    "initialized": name in self._plugins
+                    "initialized": name in self._plugins,
                 }
                 plugin_info.append(info)
             except Exception as e:
-                plugin_info.append({
-                    "name": name,
-                    "error": str(e),
-                    "initialized": False
-                })
+                plugin_info.append(
+                    {"name": name, "error": str(e), "initialized": False}
+                )
 
         return plugin_info
 

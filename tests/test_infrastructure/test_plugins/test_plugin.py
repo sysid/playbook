@@ -9,7 +9,7 @@ from src.playbook.domain.plugins import (
     FunctionSignature,
     ParameterDef,
     ReturnDef,
-    PluginExecutionError
+    PluginExecutionError,
 )
 
 
@@ -34,44 +34,31 @@ class ExampleTestPlugin(Plugin):
                         "message": ParameterDef(
                             type="str",
                             required=True,
-                            description="Message to echo back"
+                            description="Message to echo back",
                         )
                     },
-                    returns=ReturnDef(
-                        type="str",
-                        description="The echoed message"
-                    )
+                    returns=ReturnDef(type="str", description="The echoed message"),
                 ),
                 "add": FunctionSignature(
                     name="add",
                     description="Add two numbers",
                     parameters={
                         "a": ParameterDef(
-                            type="int",
-                            required=True,
-                            description="First number"
+                            type="int", required=True, description="First number"
                         ),
                         "b": ParameterDef(
-                            type="int",
-                            required=True,
-                            description="Second number"
-                        )
+                            type="int", required=True, description="Second number"
+                        ),
                     },
-                    returns=ReturnDef(
-                        type="int",
-                        description="Sum of a and b"
-                    )
+                    returns=ReturnDef(type="int", description="Sum of a and b"),
                 ),
                 "error": FunctionSignature(
                     name="error",
                     description="Function that always fails",
                     parameters={},
-                    returns=ReturnDef(
-                        type="str",
-                        description="Never returns"
-                    )
-                )
-            }
+                    returns=ReturnDef(type="str", description="Never returns"),
+                ),
+            },
         )
 
     def initialize(self, config: Dict[str, Any]) -> None:
@@ -118,17 +105,12 @@ class ConfigurableTestPlugin(Plugin):
                     description="Greet a person with configured prefix",
                     parameters={
                         "name": ParameterDef(
-                            type="str",
-                            required=True,
-                            description="Name to greet"
+                            type="str", required=True, description="Name to greet"
                         )
                     },
-                    returns=ReturnDef(
-                        type="str",
-                        description="Greeting message"
-                    )
+                    returns=ReturnDef(type="str", description="Greeting message"),
                 )
-            }
+            },
         )
 
     def initialize(self, config: Dict[str, Any]) -> None:

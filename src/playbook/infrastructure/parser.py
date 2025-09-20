@@ -7,7 +7,14 @@ from typing import Dict, Union, Optional, Any
 
 from pydantic import ValidationError
 
-from ..domain.models import Runbook, NodeType, ManualNode, FunctionNode, CommandNode, VariableDefinition
+from ..domain.models import (
+    Runbook,
+    NodeType,
+    ManualNode,
+    FunctionNode,
+    CommandNode,
+    VariableDefinition,
+)
 from .variables import VariableManager, VariableValidationError
 from ..domain.exceptions import ConfigurationError
 
@@ -26,9 +33,7 @@ class RunbookParser:
         self.variable_manager = variable_manager
 
     def parse(
-        self,
-        file_path: str,
-        variables: Optional[Dict[str, Any]] = None
+        self, file_path: str, variables: Optional[Dict[str, Any]] = None
     ) -> Runbook:
         """Parse a runbook file with optional variable substitution.
 
@@ -70,10 +75,14 @@ class RunbookParser:
                 # Parse variable definitions
                 for var_name, var_config in variables_section.items():
                     if isinstance(var_config, dict):
-                        variable_definitions[var_name] = VariableDefinition.model_validate(var_config)
+                        variable_definitions[var_name] = (
+                            VariableDefinition.model_validate(var_config)
+                        )
                     else:
                         # Simple default value
-                        variable_definitions[var_name] = VariableDefinition(default=var_config)
+                        variable_definitions[var_name] = VariableDefinition(
+                            default=var_config
+                        )
 
                 # Process variables if we have a variable manager
                 if self.variable_manager:
@@ -85,22 +94,29 @@ class RunbookParser:
 
                     # Merge provided variables with defaults
                     final_variables = self.variable_manager.merge_variables(
-                        cli_vars=variables,
-                        defaults=defaults
+                        cli_vars=variables, defaults=defaults
                     )
 
                     # Validate variables
-                    self.variable_manager.validate_variables(final_variables, variable_definitions)
+                    self.variable_manager.validate_variables(
+                        final_variables, variable_definitions
+                    )
 
                     # Check for missing required variables
-                    missing = self.variable_manager.get_missing_required(variable_definitions, final_variables)
+                    missing = self.variable_manager.get_missing_required(
+                        variable_definitions, final_variables
+                    )
                     if missing:
                         # Try to prompt for missing variables
-                        prompted = self.variable_manager.prompt_for_missing_variables(missing, variable_definitions)
+                        prompted = self.variable_manager.prompt_for_missing_variables(
+                            missing, variable_definitions
+                        )
                         final_variables.update(prompted)
 
                         # Re-validate after prompting
-                        self.variable_manager.validate_variables(final_variables, variable_definitions)
+                        self.variable_manager.validate_variables(
+                            final_variables, variable_definitions
+                        )
 
         except (VariableValidationError, ConfigurationError):
             # Re-raise variable-related errors
@@ -112,7 +128,9 @@ class RunbookParser:
         # Apply templating to the raw content if we have variables
         if self.variable_manager and final_variables:
             try:
-                processed_content = self.variable_manager.substitute_in_string(raw_content, final_variables)
+                processed_content = self.variable_manager.substitute_in_string(
+                    raw_content, final_variables
+                )
             except Exception as e:
                 raise ValueError(f"Template processing failed: {e}")
         else:
@@ -226,10 +244,14 @@ class RunbookParser:
             # Parse variable definitions
             for var_name, var_config in variables_section.items():
                 if isinstance(var_config, dict):
-                    variable_definitions[var_name] = VariableDefinition.model_validate(var_config)
+                    variable_definitions[var_name] = VariableDefinition.model_validate(
+                        var_config
+                    )
                 else:
                     # Simple default value
-                    variable_definitions[var_name] = VariableDefinition(default=var_config)
+                    variable_definitions[var_name] = VariableDefinition(
+                        default=var_config
+                    )
 
         return variable_definitions
 
