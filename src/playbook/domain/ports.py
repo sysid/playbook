@@ -32,14 +32,6 @@ class ProcessRunner(Protocol):
         pass
 
 
-class FunctionLoader(Protocol):
-    """Dynamic function loading interface"""
-
-    @abstractmethod
-    def load_and_call(self, function_path: str, params: Dict) -> any:
-        """Load function by its path and call with params"""
-        pass
-
 
 class RunRepository(ABC):
     """Interface for run persistence"""

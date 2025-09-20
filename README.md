@@ -17,7 +17,9 @@ It supports manual approvals, shell commands, and Python functions as workflow s
 
 - Runbook execution from **TOML-defined DAGs**
 - **Variable support** with Jinja2 templating for dynamic workflows
+- **Plugin system** for extensible functionality with external packages
 - Manual, command, and function nodes
+- Plugin-based function execution
 - Rich CLI interface with progress display and user interaction
 - Execution state stored in **SQLite** (resumable)
 - DAG visualization with **Graphviz**
@@ -27,10 +29,21 @@ It supports manual approvals, shell commands, and Python functions as workflow s
 
 ## 📦 Installation
 
-Clone this repo and set up a virtual environment:
+Install Playbook from PyPI:
 
 ```bash
 pip install playbook
+```
+
+Install with additional plugins:
+
+```bash
+# Install with commonly used plugins
+pip install playbook playbook-slack playbook-http
+
+# Or install plugins separately as needed
+pip install playbook
+pip install playbook-aws playbook-k8s
 ```
 
 Run with:
@@ -90,13 +103,34 @@ timeout      = 300
 
 #### Function Node
 
+Function nodes use plugin-based execution:
+
 ```toml
-[notify]
-type            = "Function"
-function_name   = "playbook.functions.notify"
-function_params = { message = "Deployment complete" }
-description     = "Notify stakeholders"
-depends_on      = ["build", "tests"]
+[slack_notify]
+type = "Function"
+plugin = "slack"                    # Plugin name
+function = "send_message"           # Function within plugin
+function_params = {
+    channel = "#ops",
+    message = "Deployment complete!"
+}
+plugin_config = {
+    webhook_url = "${SLACK_WEBHOOK}",
+    timeout = 30
+}
+description = "Notify team via Slack"
+depends_on = ["build", "tests"]
+```
+
+**Built-in Python functions:**
+```toml
+[notify_completion]
+type = "Function"
+plugin = "python"
+function = "notify"
+function_params = { message = "Deployment complete!" }
+description = "Send notification"
+depends_on = ["build", "tests"]
 ```
 
 ### Variables
@@ -136,6 +170,168 @@ depends_on = []
 - **Filters**: `{{APP_NAME|upper}}`, `{{SERVICES|join(', ')}}`
 - **Conditionals**: `{% if ENVIRONMENT == 'prod' %}critical{% endif %}`
 - **Loops**: `{% for service in SERVICES %}deploy {{service}} && {% endfor %}`
+
+#### Automatic Type Conversion
+Playbook automatically converts template variables to the expected parameter types:
+
+```toml
+[variables]
+TIMEOUT = { default = 300, type = "int" }
+ENABLED = { default = true, type = "bool" }
+
+[sleep_step]
+type = "Function"
+plugin = "python"
+function = "sleep"
+function_params = { seconds = "{{TIMEOUT}}" }  # String "300" → int 300
+
+[notification]
+type = "Function"
+plugin = "example"
+function = "send_alert"
+function_params = {
+    message = "Alert for {{APP_NAME}}",  # Stays as string
+    urgent = "{{ENABLED}}"               # String "true" → bool true
+}
+```
+
+**Supported conversions:**
+- `int`: `"42"` → `42`
+- `float`: `"3.14"` → `3.14`
+- `bool`: `"true"/"false"`, `"1"/"0"`, `"yes"/"no"` → `true`/`false`
+- `list`: `'["a","b"]'` → `["a", "b"]` (JSON parsing)
+- `dict`: `'{"key":"value"}'` → `{"key": "value"}` (JSON parsing)
+
+## 🔌 Plugin System
+
+Playbook features a powerful plugin system that allows external packages to extend functionality through a standardized interface.
+
+### Using Plugins
+
+#### Plugin Installation
+```bash
+# Install plugins from PyPI
+pip install playbook-slack playbook-aws playbook-http
+
+# List available plugins
+playbook info --plugins
+```
+
+#### Plugin Discovery
+Plugins are automatically discovered through Python entry points. Once installed, they're immediately available in workflows without configuration.
+
+#### Plugin Configuration
+
+Plugins support both global and per-node configuration:
+
+```toml
+# Global plugin configuration (applies to all uses)
+[runbook.plugin_config.slack]
+default_webhook = "${SLACK_WEBHOOK}"
+timeout = 30
+
+# Per-node plugin configuration (overrides global)
+[notify_success]
+type = "Function"
+plugin = "slack"
+function = "send_message"
+function_params = { channel = "#ops", message = "Success!" }
+plugin_config = { webhook_url = "${SUCCESS_WEBHOOK}" }  # Node-specific override
+```
+
+### Plugin Development
+
+#### When to Create a Plugin
+
+Create a separate plugin when you need:
+- **Custom business logic** not covered by built-in functions
+- **External service integrations** (APIs, databases, cloud services)
+- **Specialized data processing** or transformations
+- **Domain-specific functionality** unique to your use case
+
+**Do NOT try to:**
+- Call arbitrary Python functions dynamically (not supported)
+- Execute native Python modules directly (security risk)
+- Bypass the plugin interface (breaks the architecture)
+
+The built-in Python plugin provides only basic utilities (`notify`, `sleep`, `throw`). All custom functionality must be implemented as proper plugins.
+
+#### Creating a Plugin
+
+External developers can create plugins by implementing the `Plugin` interface:
+
+```python
+# my_plugin/plugin.py
+from playbook.domain.plugins import Plugin, PluginMetadata, FunctionSignature, ParameterDef
+
+class MyPlugin(Plugin):
+    def get_metadata(self) -> PluginMetadata:
+        return PluginMetadata(
+            name="my-plugin",
+            version="1.0.0",
+            author="Your Name",
+            description="Custom functionality for Playbook",
+            functions={
+                "my_function": FunctionSignature(
+                    name="my_function",
+                    description="Does something useful",
+                    parameters={
+                        "input": ParameterDef(
+                            type="str",
+                            required=True,
+                            description="Input parameter"
+                        )
+                    }
+                )
+            }
+        )
+
+    def initialize(self, config):
+        self.config = config
+
+    def execute(self, function_name, params):
+        if function_name == "my_function":
+            return f"Processed: {params['input']}"
+
+    def cleanup(self):
+        pass
+```
+
+#### Plugin Registration
+
+Register your plugin via setuptools entry points in `pyproject.toml`:
+
+```toml
+[project.entry-points."playbook.plugins"]
+my-plugin = "my_plugin.plugin:MyPlugin"
+```
+
+#### Plugin Distribution
+
+```bash
+# Package and distribute
+pip install build
+python -m build
+twine upload dist/*
+
+# Install and use
+pip install my-plugin
+```
+
+### Available Plugins
+
+#### Built-in Plugins
+- **python**: Built-in utility functions (notify, sleep, throw) for common workflow operations
+
+#### Community Plugins
+Popular plugins available on PyPI:
+- **playbook-slack**: Slack notifications and interactions
+- **playbook-aws**: AWS service integrations
+- **playbook-http**: HTTP requests and API calls
+- **playbook-k8s**: Kubernetes operations
+- **playbook-git**: Git repository operations
+
+*Note: Plugin availability depends on community contributions*
 
 ### Details and Specification
 More info: [DAG.md](doc/DAG.md)
@@ -202,11 +398,17 @@ playbook view-dag path/to/runbook.playbook.toml --no-open
 - Ubuntu/Debian: `sudo apt-get install graphviz`
 - CentOS/RHEL: `sudo yum install graphviz`
 
-### Show run statistics
+### Show run statistics and plugin information
 
 ```bash
+# Show general information
 playbook info
+
+# Show specific workflow runs
 playbook show "Example Workflow"
+
+# List available plugins and their functions
+playbook info --plugins
 ```
 
 
@@ -217,11 +419,46 @@ playbook show "Example Workflow"
 - Allows resuming failed runs or inspecting previous ones
 
 
-## 🧩 Extending
+## 🧩 Extending and Plugin Ecosystem
 
-- Add new built-in functions in `playbook/functions.py`
-- Add adapters for new persistence/visualization backends
-- Follow domain/service/infrastructure boundaries (hexagonal)
+### Creating Plugins
+
+**Plugin-Only Architecture**: Playbook uses a strict plugin-only architecture. All custom functionality must be implemented as plugins that adhere to the plugin interface. There is no mechanism to execute arbitrary Python code dynamically.
+
+The recommended way to extend Playbook functionality is through plugins:
+
+1. **Create a plugin package**: Implement the `Plugin` interface
+2. **Register via entry points**: Use `playbook.plugins` entry point group
+3. **Distribute**: Publish to PyPI or install locally
+4. **Use in workflows**: Reference by plugin name in TOML files
+
+### Plugin Development Best Practices
+
+- **Parameter validation**: Define comprehensive `ParameterDef` schemas
+- **Error handling**: Provide clear, actionable error messages
+- **Documentation**: Include examples and detailed function descriptions
+- **Testing**: Write comprehensive tests for all plugin functions
+- **Security**: Validate all inputs and handle secrets properly
+
+### Core System Extension
+
+For core system modifications:
+- **Infrastructure adapters**: New persistence/visualization backends
+- **Domain extensions**: New node types or workflow features
+- **Service layer**: New execution strategies or orchestration logic
+- **Architecture**: Follow hexagonal architecture boundaries
+
+### Plugin Naming Conventions
+
+- **Package names**: `playbook-{service}` (e.g., `playbook-slack`)
+- **Entry point names**: Short, descriptive (e.g., `slack`, `aws`, `http`)
+- **Function names**: Action-oriented (e.g., `send_message`, `create_instance`)
+
+### Contributing
+
+- Plugin contributions welcome via separate packages
+- Core system contributions via pull requests
+- Documentation improvements always appreciated
 
 
 ## 📚 Example DAG Shape

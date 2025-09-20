@@ -1,7 +1,7 @@
 # src/playbook/service/engine.py
 import logging
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any
 
 from ..domain.models import (
     NodeType,
@@ -19,11 +19,16 @@ from ..domain.models import (
 from ..domain.ports import (
     Clock,
     ProcessRunner,
-    FunctionLoader,
     RunRepository,
     NodeExecutionRepository,
     NodeIOHandler,
 )
+from ..domain.plugins import (
+    PluginNotFoundError,
+    PluginExecutionError,
+    FunctionNotFoundError
+)
+from ..infrastructure.plugin_registry import plugin_registry
 
 logger = logging.getLogger(__name__)
 
@@ -35,17 +40,31 @@ class RunbookEngine:
         self,
         clock: Clock,
         process_runner: ProcessRunner,
-        function_loader: FunctionLoader,
         run_repo: RunRepository,
         node_repo: NodeExecutionRepository,
         io_handler: NodeIOHandler,
     ):
         self.clock = clock
         self.process_runner = process_runner
-        self.function_loader = function_loader
         self.run_repo = run_repo
         self.node_repo = node_repo
         self.io_handler = io_handler
+
+        # Initialize plugin system
+        self._initialize_plugins()
+
+    def _initialize_plugins(self) -> None:
+        """Initialize the plugin system."""
+        try:
+            plugin_registry.discover_plugins()
+
+            # Register built-in Python plugin for backward compatibility
+            from ..infrastructure.plugins.python_plugin import PythonPlugin
+            plugin_registry.register_plugin("python", PythonPlugin)
+
+            logger.debug(f"Plugin system initialized with {len(plugin_registry.list_plugins())} plugins")
+        except Exception as e:
+            logger.error(f"Failed to initialize plugin system: {e}")
 
     def validate(self, runbook: Runbook) -> List[str]:
         """Validate runbook for correctness"""
@@ -522,9 +541,8 @@ class RunbookEngine:
             return execution
 
         try:
-            result = self.function_loader.load_and_call(
-                node.function_name, node.function_params
-            )
+            # Execute plugin-based function
+            result = self._execute_plugin_function(node)
             end_time = self.clock.now()
             duration_ms = (
                 int((end_time - start_time).total_seconds() * 1000)
@@ -570,6 +588,43 @@ class RunbookEngine:
                 status=NodeStatus.NOK,
                 exception=str(e),
                 duration_ms=duration_ms,
+            )
+
+    def _execute_plugin_function(self, node: FunctionNode) -> Any:
+        """Execute a plugin-based function.
+
+        Args:
+            node: FunctionNode with plugin and function specified
+
+        Returns:
+            Function execution result
+
+        Raises:
+            PluginNotFoundError: If plugin is not found
+            PluginExecutionError: If function execution fails
+        """
+        try:
+            # Get plugin configuration (merge global and node-specific)
+            plugin_config = {}
+            if node.plugin_config:
+                plugin_config.update(node.plugin_config)
+
+            # Get plugin instance
+            plugin = plugin_registry.get_plugin(node.plugin, plugin_config)
+
+            # Execute function with parameters
+            result = plugin.execute(node.function, node.function_params)
+
+            logger.debug(f"Successfully executed {node.plugin}.{node.function}")
+            return result
+
+        except (PluginNotFoundError, PluginExecutionError, FunctionNotFoundError):
+            # Re-raise plugin-specific errors
+            raise
+        except Exception as e:
+            # Wrap other exceptions
+            raise PluginExecutionError(
+                f"Unexpected error executing {node.plugin}.{node.function}: {e}"
             )
 
     def _execute_command_node(self, node: CommandNode) -> NodeExecution:
@@ -723,3 +778,11 @@ class RunbookEngine:
 
         # Still running
         return RunStatus.RUNNING
+
+    def cleanup(self) -> None:
+        """Clean up engine resources including plugins."""
+        try:
+            plugin_registry.cleanup_all()
+            logger.debug("Engine cleanup completed")
+        except Exception as e:
+            logger.error(f"Error during engine cleanup: {e}")

@@ -53,10 +53,12 @@ class ManualNode(BaseNode):
 
 class FunctionNode(BaseNode):
     type: Literal[NodeType.FUNCTION] = NodeType.FUNCTION
-    function_name: str
-    function_params: Dict[str, Union[str, int, float, bool]] = Field(
-        default_factory=dict
-    )
+    # Plugin-based function execution
+    plugin: str
+    function: str  # Function name within plugin
+    function_params: Dict[str, Any] = Field(default_factory=dict)
+    # Plugin configuration overrides
+    plugin_config: Dict[str, Any] = Field(default_factory=dict)
 
     model_config = {"extra": "forbid"}
 

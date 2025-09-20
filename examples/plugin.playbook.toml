@@ -1,0 +1,62 @@
+[runbook]
+title = "Python Plugin Demo"
+description = "Demonstrates Python plugin functionality with built-in functions"
+version = "1.0.0"
+author = "Playbook Team"
+created_at = "2025-01-20T12:00:00Z"
+
+[variables]
+APP_NAME = { default = "demo-app", description = "Application name for demo" }
+SLEEP_DURATION = { default = 2, type = "int", min = 1, max = 10, description = "Sleep duration in seconds" }
+MESSAGE = { default = "Hello from Python plugin!", description = "Notification message" }
+
+[start_notification]
+type = "Function"
+plugin = "python"
+function = "notify"
+function_params = { message = "🚀 Starting Python plugin demo workflow for {{APP_NAME}}" }
+description = "Send startup notification"
+depends_on = []
+
+[show_info]
+type = "Manual"
+prompt_after = "Demo started! Press Enter to continue with Python function examples..."
+description = "Manual checkpoint - workflow has started"
+depends_on = ["start_notification"]
+
+[demonstrate_sleep]
+type = "Function"
+plugin = "python"
+function = "sleep"
+description = "Demonstrate Python sleep function with {{SLEEP_DURATION}} seconds"
+depends_on = ["show_info"]
+
+[demonstrate_sleep.function_params]
+seconds = "{{SLEEP_DURATION}}"
+
+[progress_notification]
+type = "Function"
+plugin = "python"
+function = "notify"
+function_params = { message = "✅ Sleep completed! Continuing with {{APP_NAME}} demo..." }
+description = "Progress update notification"
+depends_on = ["demonstrate_sleep"]
+
+[demonstrate_error_handling]
+type = "Manual"
+prompt_after = "Next step will demonstrate error handling with throw function. Press Enter to continue or Ctrl+C to abort..."
+description = "Manual checkpoint before error handling demonstration"
+depends_on = ["progress_notification"]
+
+[completion_notification]
+type = "Function"
+plugin = "python"
+function = "throw"
+description = "this throws an intentional error to demonstrate error handling"
+depends_on = ["demonstrate_error_handling"]
+
+[final_checkpoint]
+type = "Manual"
+prompt_after = "Demo completed! All Python plugin utility functions (notify, sleep, throw) have been demonstrated. Press Enter to finish..."
+description = "Final manual checkpoint - review results"
+depends_on = ["completion_notification"]

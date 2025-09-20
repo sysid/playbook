@@ -274,7 +274,8 @@ created_at = "2025-01-20T12:00:00Z"
 
 [function_node]
 type = "Function"
-function_name = "notify"
+plugin = "python"
+function = "notify"
 description = "Send notification"
 depends_on = []
 

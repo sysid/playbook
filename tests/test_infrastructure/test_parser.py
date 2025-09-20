@@ -45,9 +45,10 @@ timeout = 300
 
 [function_step]
 type = "Function"
-function_name = "mymodule.myfunction"
-function_params = { "param1" = "value1", "param2" = 42 }
-description = "Function call"
+plugin = "python"
+function = "notify"
+function_params = { "message" = "Test notification" }
+description = "Notification function"
 depends_on = ["command_step"]
 """
 
@@ -103,8 +104,9 @@ depends_on = []
         # Check function node
         function_node = runbook.nodes["function_step"]
         assert function_node.type == NodeType.FUNCTION
-        assert function_node.function_name == "mymodule.myfunction"
-        assert function_node.function_params == {"param1": "value1", "param2": 42}
+        assert function_node.plugin == "python"
+        assert function_node.function == "notify"
+        assert function_node.function_params == {"message": "Test notification"}
         assert function_node.depends_on == ["command_step"]
 
     def test_parse_file_not_found(self, parser):
