@@ -1,5 +1,4 @@
 # tests/test_infrastructure/test_persistence.py
-import sqlite3
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path

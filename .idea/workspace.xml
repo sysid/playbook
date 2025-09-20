@@ -6,13 +6,12 @@
   <component name="ChangeListManager">
     <list default="true" id="5a384825-87f7-4752-bb95-dcf8d7a51e56" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CLAUDE.md" beforeDir="false" afterPath="$PROJECT_DIR$/CLAUDE.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/pyproject.toml" beforeDir="false" afterPath="$PROJECT_DIR$/pyproject.toml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/playbook/domain/ports.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/playbook/domain/ports.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/playbook/infrastructure/cli.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/playbook/infrastructure/cli.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/playbook/infrastructure/persistence.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/playbook/infrastructure/persistence.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/playbook/functions.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/playbook/functions.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/playbook/infrastructure/cli.py" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/playbook/service/engine.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/playbook/service/engine.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/test_service/test_engine.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_service/test_engine.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_infrastructure/test_persistence.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_infrastructure/test_persistence.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/uv.lock" beforeDir="false" afterPath="$PROJECT_DIR$/uv.lock" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -51,7 +50,7 @@
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.git.unshallow": "true",
     "SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "git-widget-placeholder": "feat/retry",
+    "git-widget-placeholder": "refac/optimization",
     "last_opened_file_path": "/Users/Q187392/dev/s/private/playbook",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
@@ -225,7 +224,7 @@
       <workItem from="1747307443051" duration="395000" />
       <workItem from="1747493060514" duration="1480000" />
       <workItem from="1747585183236" duration="981000" />
-      <workItem from="1758187886657" duration="5514000" />
+      <workItem from="1758187886657" duration="7171000" />
     </task>
     <servers />
   </component>
@@ -247,13 +246,8 @@
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/playbook/infrastructure/cli.py</url>
-          <line>399</line>
-          <option name="timeStamp" value="3" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/playbook/service/engine.py</url>
-          <line>428</line>
+          <line>466</line>
           <option name="timeStamp" value="4" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">

@@ -67,18 +67,30 @@ The codebase follows **Hexagonal Architecture** with clear separation:
 - **Domain** (`src/playbook/domain/`): Core business models and ports
   - `models.py`: Pydantic models for Runbook, Node types (Manual/Command/Function), execution states
   - `ports.py`: Abstract interfaces for external dependencies
+  - `exceptions.py`: Custom exception hierarchy with context and actionable suggestions
 
 - **Service** (`src/playbook/service/`): Business logic layer
   - `engine.py`: Core RunbookEngine that orchestrates workflow execution
   - `statistics.py`: Workflow execution statistics
 
 - **Infrastructure** (`src/playbook/infrastructure/`): External adapters
-  - `cli.py`: Typer-based CLI application with Rich output
   - `persistence.py`: SQLite repositories for runs and node executions
   - `parser.py`: TOML runbook file parser
   - `process.py`: Shell command execution
   - `functions.py`: Python function loading and execution
   - `visualization.py`: Graphviz DOT export
+
+- **CLI** (`src/playbook/cli/`): Modular command-line interface
+  - `main.py`: Typer application setup and command registration
+  - `commands/`: Individual command implementations (create, run, validate, etc.)
+  - `error_handler.py`: Rich-formatted error display with context and suggestions
+  - `interaction/handlers.py`: User interaction and progress display
+  - `common.py`: Shared utilities and error handling functions
+
+- **Configuration** (`src/playbook/config/`): Environment-based configuration system
+  - `manager.py`: Configuration loading, validation, and template generation
+  - Support for development/testing/production environments
+  - TOML-based configuration with environment variable overrides
 
 ## Key Concepts
 
@@ -88,9 +100,10 @@ The codebase follows **Hexagonal Architecture** with clear separation:
 - **Function**: Calls Python functions dynamically
 
 ### State Management
-- Execution state persisted in SQLite (`~/.config/playbook/run.db`)
+- Execution state persisted in SQLite (configurable path, default: `~/.config/playbook/run.db`)
 - Supports resuming failed workflows from specific nodes
 - Tracks node execution attempts, status, and results
+- Database backup and rotation configurable
 
 ### Interactive Retry Functionality
 - **Retry failed nodes**: When a node fails, users can choose to retry, skip, or abort
@@ -101,62 +114,73 @@ The codebase follows **Hexagonal Architecture** with clear separation:
 - **Progress preservation**: Retry loops maintain progress bar state correctly
 
 ### CLI Commands
-- `playbook create`: Interactive runbook creation
-- `playbook validate`: Validate runbook syntax and DAG structure
+- `playbook create`: Interactive runbook creation with node templates
+- `playbook validate`: Validate runbook syntax and DAG structure with rich error reporting
 - `playbook run [--max-retries N]`: Execute runbook from start with optional retry limit
 - `playbook resume <run_id> [--max-retries N]`: Resume failed execution with optional retry limit
 - `playbook view-dag`: Generate and view DAG as PNG image (requires Graphviz)
   - Always saves PNG file in same directory as TOML file
   - `--keep-dot`: also save DOT file
   - `--no-open`: don't auto-open PNG (for scripting)
-- `playbook info`: Show execution statistics
-- `playbook show <workflow>`: Display run details
+- `playbook info`: Show execution statistics and database information
+- `playbook show <workflow>`: Display run details with status and timing
+- `playbook config`: Configuration management
+  - `--show`: Display current configuration across all sections
+  - `--init <env>`: Initialize configuration for environment (dev/test/prod)
+  - `--validate`: Validate current configuration with warnings
+  - `--template <path>`: Create configuration template file
+
+### Error Handling & User Experience
+- **Rich error formatting**: Color-coded panels with clear titles and suggestions
+- **Contextual information**: Detailed context for debugging complex issues
+- **Actionable suggestions**: Specific steps to resolve common problems
+- **Graceful degradation**: Non-critical failures don't stop workflow execution
+- **Verbose mode**: Full stack traces available with `-v/--verbose` flag
 
 ## Testing & Coverage
 
 ### Test Structure
 - Tests located in `tests/` directory using pytest with coverage reporting
 - Configuration in `pyproject.toml` under `[tool.pytest.ini_options]`
+- **Current Coverage**: 48.25% (improved from 29% baseline)
+- **Total Tests**: 76 tests, all passing
 
-### Tested Functionality ✅
-**Core Engine & Business Logic** - Well tested with comprehensive coverage:
-- `src/playbook/service/engine.py` (73% coverage)
+### Well-Tested Components ✅
+**Core Engine & Business Logic** - Comprehensive coverage:
+- `src/playbook/service/engine.py` (70% coverage)
   - DAG validation and cycle detection
   - Workflow execution orchestration
-  - **Retry functionality**: `retry_node_execution()` method with attempt tracking
-  - Node execution with different types (Manual/Command/Function)
+  - **Retry functionality**: Complete retry loop with attempt tracking
+  - Node execution with all types (Manual/Command/Function)
   - Resume workflow capabilities
   - Status management and error handling
 
 - `src/playbook/domain/ports.py` (71% coverage)
   - Repository interfaces and abstractions
-  - **New retry interface**: `get_latest_execution_attempt()` method
+  - Retry interface with latest execution attempt retrieval
 
-- `src/playbook/infrastructure/persistence.py` (52% coverage)
-  - SQLite execution tracking and state persistence
-  - **Retry persistence**: Latest execution attempt retrieval with proper isolation
-  - Run and node execution repository implementations
+- **CLI Commands** (82-86% coverage):
+  - `src/playbook/cli/commands/create.py`: Interactive runbook creation
+  - `src/playbook/cli/commands/validate.py`: Validation with error handling
+  - Comprehensive CLI testing using Typer's CliRunner
 
-### Untested Functionality ⚠️
-**Infrastructure & CLI** - Not covered by current test suite:
-- `src/playbook/infrastructure/cli.py` (0% coverage)
-  - Interactive retry prompts and user input handling
-  - CLI command implementations (run, resume, create, etc.)
-  - Progress bar integration and error display
+- **Infrastructure Components** (52-92% coverage):
+  - `src/playbook/infrastructure/persistence.py`: SQLite execution tracking
+  - `src/playbook/infrastructure/parser.py`: TOML parsing and validation
+  - `src/playbook/infrastructure/process.py`: Command execution
+  - `src/playbook/infrastructure/functions.py`: Python function loading
 
-- `src/playbook/infrastructure/parser.py` (0% coverage)
-  - TOML runbook file parsing
-  - Configuration validation
+### Partially Tested Components ⚠️
+**CLI & Configuration** - Moderate coverage:
+- `src/playbook/cli/error_handler.py` (43% coverage): Rich error formatting
+- `src/playbook/config/manager.py` (52% coverage): Configuration management
+- Various CLI commands (12-14% coverage): Need integration testing
 
-- `src/playbook/infrastructure/process.py` (0% coverage)
-  - Shell command execution
-  - Process management and output capture
-
-- Other infrastructure modules (0% coverage):
-  - `visualization.py`: Graphviz DAG generation
-  - `functions.py`: Python function loading
-  - `statistics.py`: Execution statistics
-  - `config.py`: Configuration management
+### Untested Components 📝
+**Statistics & Visualization** - Require dedicated test suites:
+- `src/playbook/infrastructure/statistics.py` (9% coverage)
+- `src/playbook/infrastructure/visualization.py` (15% coverage)
+- Legacy `src/playbook/functions.py` and `src/playbook/config.py` (0% coverage)
 
 ### Test Resources
 - `tests/resources/workflows/`: Real workflow examples for testing
@@ -172,8 +196,51 @@ The codebase follows **Hexagonal Architecture** with clear separation:
 - **Target**: Python 3.13+
 - Configuration in `pyproject.toml` under `[tool.ruff]` and `[tool.mypy]`
 
-## Configuration
+## Configuration System
 
-- Main config loaded from `src/playbook/config.py`
-- Default state path: `~/.config/playbook/run.db`
+### Environment-Based Configuration
+The project uses a flexible TOML-based configuration system with environment support:
+
+- **Configuration Discovery**: Local → User (`~/.config/playbook/`) → System (`/etc/playbook/`)
+- **Environment Selection**: Use `PLAYBOOK_ENV` environment variable (development/testing/production)
+- **File Precedence**: `playbook.toml` (local) → `{env}.toml` → `config.toml`
+
+### Configuration Sections
+```toml
+[database]
+path = "~/.config/playbook/run.db"  # SQLite database location
+timeout = 30                        # Connection timeout (seconds)
+backup_enabled = true              # Automatic backup creation
+backup_count = 5                   # Number of backups to keep
+
+[execution]
+default_timeout = 300              # Default command timeout
+max_retries = 3                    # Default retry attempts
+interactive_timeout = 1800         # Interactive command timeout
+parallel_execution = false         # Enable parallel node execution
+
+[logging]
+level = "INFO"                     # DEBUG, INFO, WARNING, ERROR, CRITICAL
+file_path = ""                     # Log file path (empty = console only)
+max_size_mb = 10                   # Log rotation size
+backup_count = 3                   # Rotated log files to keep
+
+[ui]
+progress_style = "bar"             # Progress display style
+color_theme = "auto"               # auto, light, dark, none
+show_timestamps = true             # Show timestamps in output
+compact_output = false             # Use compact formatting
+```
+
+### Environment Variable Overrides
+- `PLAYBOOK_ENV`: Environment name (development/testing/production)
+- `PLAYBOOK_CONFIG`: Direct config file path
+- `PLAYBOOK_DB_PATH`: Override database path
+- `PLAYBOOK_LOG_LEVEL`: Override logging level
+- `PLAYBOOK_LOG_FILE`: Override log file path
+- `PLAYBOOK_MAX_RETRIES`: Override default max retries
+- `PLAYBOOK_DEFAULT_TIMEOUT`: Override default timeout
+
+### Development Setup
 - Environment setup via direnv (`.envrc`)
+- UV for package management with Python 3.13+

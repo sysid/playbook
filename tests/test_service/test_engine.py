@@ -1423,3 +1423,170 @@ class TestRunbookEngine:
         assert execution.exit_code == 1
         assert execution.stderr == "Command failed"
         mock_dependencies["node_repo"].update_execution.assert_called_once()
+
+    def test_run_status_with_skipped_node_after_retries(self, mock_dependencies):
+        """Test that workflow succeeds when failed node is skipped after retries"""
+        engine = RunbookEngine(
+            clock=mock_dependencies["clock"],
+            process_runner=mock_dependencies["process_runner"],
+            function_loader=mock_dependencies["function_loader"],
+            run_repo=mock_dependencies["run_repo"],
+            node_repo=mock_dependencies["node_repo"],
+            io_handler=mock_dependencies["io_handler"],
+        )
+
+        # Create a simple runbook with one node
+        runbook = Runbook(
+            title="Test Workflow",
+            description="Test",
+            version="1.0.0",
+            author="test",
+            created_at=datetime.now(timezone.utc),
+            nodes={"node1": ManualNode(id="node1", name="Test Node")},
+        )
+
+        run_info = RunInfo(
+            workflow_name="Test Workflow",
+            run_id=1,
+            start_time=datetime.now(timezone.utc),
+            trigger=TriggerType.RUN,
+            status=RunStatus.RUNNING,
+        )
+
+        # Mock multiple executions: 3 failed attempts + 1 skipped
+        executions = [
+            NodeExecution(
+                workflow_name="Test Workflow",
+                run_id=1,
+                node_id="node1",
+                attempt=1,
+                start_time=datetime.now(timezone.utc),
+                end_time=datetime.now(timezone.utc),
+                status=NodeStatus.NOK,
+                exception="Failed attempt 1",
+                duration_ms=100,
+            ),
+            NodeExecution(
+                workflow_name="Test Workflow",
+                run_id=1,
+                node_id="node1",
+                attempt=2,
+                start_time=datetime.now(timezone.utc),
+                end_time=datetime.now(timezone.utc),
+                status=NodeStatus.NOK,
+                exception="Failed attempt 2",
+                duration_ms=100,
+            ),
+            NodeExecution(
+                workflow_name="Test Workflow",
+                run_id=1,
+                node_id="node1",
+                attempt=3,
+                start_time=datetime.now(timezone.utc),
+                end_time=datetime.now(timezone.utc),
+                status=NodeStatus.NOK,
+                exception="Failed attempt 3",
+                duration_ms=100,
+            ),
+            NodeExecution(
+                workflow_name="Test Workflow",
+                run_id=1,
+                node_id="node1",
+                attempt=4,
+                start_time=datetime.now(timezone.utc),
+                end_time=datetime.now(timezone.utc),
+                status=NodeStatus.SKIPPED,
+                operator_decision="skip",
+                duration_ms=0,
+            ),
+        ]
+
+        mock_dependencies["node_repo"].get_executions.return_value = executions
+
+        # Test the run status update
+        final_status = engine.update_run_status(runbook, run_info)
+
+        # Should return OK because the only node is skipped (latest attempt)
+        assert final_status == RunStatus.OK
+        assert run_info.status == RunStatus.OK
+        assert run_info.nodes_ok == 0
+        assert run_info.nodes_nok == 0
+        assert run_info.nodes_skipped == 1
+
+    def test_run_status_with_failed_node_multiple_attempts(self, mock_dependencies):
+        """Test that workflow fails when node ultimately fails (no skip)"""
+        engine = RunbookEngine(
+            clock=mock_dependencies["clock"],
+            process_runner=mock_dependencies["process_runner"],
+            function_loader=mock_dependencies["function_loader"],
+            run_repo=mock_dependencies["run_repo"],
+            node_repo=mock_dependencies["node_repo"],
+            io_handler=mock_dependencies["io_handler"],
+        )
+
+        # Create a simple runbook with one node
+        runbook = Runbook(
+            title="Test Workflow",
+            description="Test",
+            version="1.0.0",
+            author="test",
+            created_at=datetime.now(timezone.utc),
+            nodes={"node1": ManualNode(id="node1", name="Test Node")},
+        )
+
+        run_info = RunInfo(
+            workflow_name="Test Workflow",
+            run_id=1,
+            start_time=datetime.now(timezone.utc),
+            trigger=TriggerType.RUN,
+            status=RunStatus.RUNNING,
+        )
+
+        # Mock multiple executions: all failed, no skip
+        executions = [
+            NodeExecution(
+                workflow_name="Test Workflow",
+                run_id=1,
+                node_id="node1",
+                attempt=1,
+                start_time=datetime.now(timezone.utc),
+                end_time=datetime.now(timezone.utc),
+                status=NodeStatus.NOK,
+                exception="Failed attempt 1",
+                duration_ms=100,
+            ),
+            NodeExecution(
+                workflow_name="Test Workflow",
+                run_id=1,
+                node_id="node1",
+                attempt=2,
+                start_time=datetime.now(timezone.utc),
+                end_time=datetime.now(timezone.utc),
+                status=NodeStatus.NOK,
+                exception="Failed attempt 2",
+                duration_ms=100,
+            ),
+            NodeExecution(
+                workflow_name="Test Workflow",
+                run_id=1,
+                node_id="node1",
+                attempt=3,
+                start_time=datetime.now(timezone.utc),
+                end_time=datetime.now(timezone.utc),
+                status=NodeStatus.NOK,
+                exception="Final failed attempt",
+                duration_ms=100,
+            ),
+        ]
+
+        mock_dependencies["node_repo"].get_executions.return_value = executions
+
+        # Test the run status update
+        final_status = engine.update_run_status(runbook, run_info)
+
+        # Should return NOK because the latest attempt failed
+        assert final_status == RunStatus.NOK
+        assert run_info.status == RunStatus.NOK
+        assert run_info.nodes_ok == 0
+        assert run_info.nodes_nok == 1
+        assert run_info.nodes_skipped == 0

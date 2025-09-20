@@ -25,7 +25,7 @@ def notify(message: str) -> str:
 
 def sleep(seconds: int) -> str:
     time.sleep(seconds)
-    return f"done"
+    return "done"
 
 
 def throw() -> str:

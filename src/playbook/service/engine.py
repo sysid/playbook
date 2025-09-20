@@ -1,7 +1,7 @@
 # src/playbook/service/engine.py
 import logging
 from datetime import datetime
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from ..domain.models import (
     NodeType,
@@ -435,8 +435,6 @@ class RunbookEngine:
         Returns:
             Tuple of (final_status, final_execution, total_attempts)
         """
-        node = runbook.nodes[node_id]
-
         # Get the current latest attempt for this node
         latest_execution = self.node_repo.get_latest_execution_attempt(
             runbook.title, run_info.run_id, node_id
@@ -659,16 +657,35 @@ class RunbookEngine:
                 duration_ms=duration_ms,
             )
 
+    def _get_latest_executions_per_node(self, executions: List[NodeExecution]) -> Dict[str, NodeExecution]:
+        """Get the latest execution attempt for each node.
+
+        Args:
+            executions: List of all executions for a run
+
+        Returns:
+            Dictionary mapping node_id to its latest execution
+        """
+        latest_executions = {}
+        for execution in executions:
+            node_id = execution.node_id
+            if node_id not in latest_executions or execution.attempt > latest_executions[node_id].attempt:
+                latest_executions[node_id] = execution
+        return latest_executions
+
     def update_run_status(self, runbook: Runbook, run_info: RunInfo) -> RunStatus:
         """Update overall run status based on node executions"""
         executions = self.node_repo.get_executions(runbook.title, run_info.run_id)
 
-        # Count node statuses
+        # Get only the latest execution attempt for each node
+        latest_executions = self._get_latest_executions_per_node(executions)
+
+        # Count node statuses based on latest attempts only
         nodes_ok = 0
         nodes_nok = 0
         nodes_skipped = 0
 
-        for execution in executions:
+        for execution in latest_executions.values():
             if execution.status == NodeStatus.OK:
                 nodes_ok += 1
             elif execution.status == NodeStatus.NOK:
@@ -683,8 +700,8 @@ class RunbookEngine:
         # Always update the node counts in the database
         self.run_repo.update_run(run_info)
 
-        # Check for critical failures
-        for execution in executions:
+        # Check for critical failures (using latest executions only)
+        for execution in latest_executions.values():
             node = runbook.nodes.get(execution.node_id)
             if node and node.critical and execution.status == NodeStatus.NOK:
                 run_info.status = RunStatus.NOK

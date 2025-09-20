@@ -38,7 +38,7 @@ dev = [
 ]
 
 [project.scripts]
-playbook = "playbook.infrastructure.cli:app"
+playbook = "playbook.cli.main:app"
 
 [project.urls]
 "Homepage" = "https://github.com/sysid/playbook"
