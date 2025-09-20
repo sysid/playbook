@@ -2,8 +2,13 @@
 """Version command implementation."""
 
 import typer
+from importlib import metadata
 
 
 def print_version() -> None:
     """Show version"""
-    typer.secho("0.6.0", fg=typer.colors.GREEN)
+    try:
+        version = metadata.version("playbook")
+    except metadata.PackageNotFoundError:
+        version = "unknown"
+    typer.secho(version, fg=typer.colors.GREEN)
