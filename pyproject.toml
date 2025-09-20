@@ -42,6 +42,9 @@ dev = [
 [project.scripts]
 playbook = "playbook.cli.main:app"
 
+[project.entry-points."playbook.plugins"]
+python = "playbook.infrastructure.plugins.python_plugin:PythonPlugin"
+
 [project.urls]
 "Homepage" = "https://github.com/sysid/playbook"
 "Bug Tracker" = "https://github.com/sysid/playbook/issues"

@@ -9,7 +9,6 @@ from rich.console import Console
 
 from ..config import config_manager
 from .error_handler import ErrorHandler
-from ..infrastructure.functions import PythonFunctionLoader
 from ..infrastructure.parser import RunbookParser
 from ..infrastructure.persistence import (
     SQLiteRunRepository,
@@ -42,7 +41,6 @@ def get_engine(
     # Create dependencies
     clock = SystemClock()
     process_runner = ShellProcessRunner()
-    function_loader = PythonFunctionLoader()
     run_repo = SQLiteRunRepository(db_path)
     node_repo = SQLiteNodeExecutionRepository(db_path)
 
@@ -50,7 +48,6 @@ def get_engine(
     return RunbookEngine(
         clock=clock,
         process_runner=process_runner,
-        function_loader=function_loader,
         run_repo=run_repo,
         node_repo=node_repo,
         io_handler=io_handler,

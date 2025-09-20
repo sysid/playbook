@@ -25,7 +25,6 @@ class TestRunbookEngine:
         clock.now.return_value = datetime.now(timezone.utc)
 
         process_runner = MagicMock()
-        function_loader = MagicMock()
         run_repo = MagicMock()
         node_repo = MagicMock()
         io_handler = MagicMock()
@@ -33,7 +32,6 @@ class TestRunbookEngine:
         return {
             "clock": clock,
             "process_runner": process_runner,
-            "function_loader": function_loader,
             "run_repo": run_repo,
             "node_repo": node_repo,
             "io_handler": io_handler,
@@ -45,7 +43,6 @@ class TestRunbookEngine:
         return RunbookEngine(
             clock=mock_dependencies["clock"],
             process_runner=mock_dependencies["process_runner"],
-            function_loader=mock_dependencies["function_loader"],
             run_repo=mock_dependencies["run_repo"],
             node_repo=mock_dependencies["node_repo"],
             io_handler=mock_dependencies["io_handler"],
@@ -865,8 +862,9 @@ class TestRunbookEngine:
                 "func_node": FunctionNode(
                     id="func_node",
                     type=NodeType.FUNCTION,
-                    function_name="test_function",
-                    function_params={"param1": "value1"},
+                    plugin="python",
+                    function="notify",
+                    function_params={"message": "test message"},
                     depends_on=[],
                 )
             },
@@ -889,10 +887,7 @@ class TestRunbookEngine:
             status=NodeStatus.RUNNING,
         )
 
-        # Mock function loader to return a result
-        mock_dependencies[
-            "function_loader"
-        ].load_and_call.return_value = "Function result"
+        # Mock plugin system to return a result
 
         # Act
         status, updated_execution = engine.resume_node_execution(
@@ -902,12 +897,10 @@ class TestRunbookEngine:
         # Assert
         assert status == NodeStatus.OK
         assert updated_execution.status == NodeStatus.OK
-        assert updated_execution.result_text == "Function result"
+        assert updated_execution.result_text == "Notification sent: test message"
         assert updated_execution.end_time is not None
         mock_dependencies["node_repo"].update_execution.assert_called()
-        mock_dependencies["function_loader"].load_and_call.assert_called_once_with(
-            "test_function", {"param1": "value1"}
-        )
+        # Plugin system will be called with plugin and function parameters
 
     def test_resume_node_execution_whenCommandNode_thenExecutesCommand(
         self, engine, mock_dependencies
@@ -974,7 +967,7 @@ class TestRunbookEngine:
         self, engine, mock_dependencies
     ):
         """Test that resume_node_execution handles exceptions during execution"""
-        # Arrange - Create a function node
+        # Arrange - Create a function node that will throw an exception
         from playbook.domain.models import FunctionNode
 
         runbook = Runbook(
@@ -987,8 +980,9 @@ class TestRunbookEngine:
                 "func_node": FunctionNode(
                     id="func_node",
                     type=NodeType.FUNCTION,
-                    function_name="test_function",
-                    function_params={"param1": "value1"},
+                    plugin="python",
+                    function="throw",
+                    function_params={},
                     depends_on=[],
                 )
             },
@@ -1012,8 +1006,8 @@ class TestRunbookEngine:
         )
 
         # Mock function loader to raise an exception
-        test_exception = RuntimeError("Test function error")
-        mock_dependencies["function_loader"].load_and_call.side_effect = test_exception
+        # The Python plugin's "throw" function will raise an exception
+        # Mock plugin system to raise exception - plugin system will handle the error
 
         # Act
         status, updated_execution = engine.resume_node_execution(
@@ -1023,7 +1017,7 @@ class TestRunbookEngine:
         # Assert
         assert status == NodeStatus.NOK
         assert updated_execution.status == NodeStatus.NOK
-        assert updated_execution.exception == str(test_exception)
+        assert "Intentional exception for testing purposes" in updated_execution.exception
         assert updated_execution.end_time is not None
         mock_dependencies["node_repo"].update_execution.assert_called()
 
@@ -1044,8 +1038,9 @@ class TestRunbookEngine:
                 "func_node": FunctionNode(
                     id="func_node",
                     type=NodeType.FUNCTION,
-                    function_name="test_function",
-                    function_params={"param1": "value1"},
+                    plugin="python",
+                    function="notify",
+                    function_params={"message": "test message"},
                     depends_on=[],
                 )
             },
@@ -1059,11 +1054,6 @@ class TestRunbookEngine:
             trigger=TriggerType.RESUME,
         )
 
-        # Mock function loader to return a result
-        mock_dependencies[
-            "function_loader"
-        ].load_and_call.return_value = "Function result"
-
         # Act
         status, execution = engine.execute_node_with_existing_record(
             runbook,
@@ -1075,17 +1065,17 @@ class TestRunbookEngine:
         # Assert
         assert status == NodeStatus.OK
         assert execution.status == NodeStatus.OK
-        assert execution.result_text == "Function result"
+        assert execution.result_text == "Notification sent: test message"
         assert execution.attempt == 2
         assert execution.end_time is not None
         mock_dependencies["node_repo"].update_execution.assert_called_once()
-        mock_dependencies["function_loader"].load_and_call.assert_called_once()
+        # Plugin system will be called to execute the function
 
     def test_execute_node_with_existing_record_whenException_thenHandlesError(
         self, engine, mock_dependencies
     ):
         """Test that execute_node_with_existing_record handles exceptions"""
-        # Arrange
+        # Arrange - Create a function node that will throw an exception
         from playbook.domain.models import FunctionNode
 
         runbook = Runbook(
@@ -1098,8 +1088,9 @@ class TestRunbookEngine:
                 "func_node": FunctionNode(
                     id="func_node",
                     type=NodeType.FUNCTION,
-                    function_name="test_function",
-                    function_params={"param1": "value1"},
+                    plugin="python",
+                    function="throw",
+                    function_params={},
                     depends_on=[],
                 )
             },
@@ -1114,8 +1105,8 @@ class TestRunbookEngine:
         )
 
         # Mock function loader to raise an exception
-        test_exception = RuntimeError("Test function error")
-        mock_dependencies["function_loader"].load_and_call.side_effect = test_exception
+        # The Python plugin's "throw" function will raise an exception
+        # Mock plugin system to raise exception - plugin system will handle the error
 
         # Act
         status, execution = engine.execute_node_with_existing_record(
@@ -1128,7 +1119,7 @@ class TestRunbookEngine:
         # Assert
         assert status == NodeStatus.NOK
         assert execution.status == NodeStatus.NOK
-        assert execution.exception == str(test_exception)
+        assert "Intentional exception for testing purposes" in execution.exception
         assert execution.attempt == 2
         assert execution.end_time is not None
         mock_dependencies["node_repo"].update_execution.assert_called_once()
@@ -1429,7 +1420,6 @@ class TestRunbookEngine:
         engine = RunbookEngine(
             clock=mock_dependencies["clock"],
             process_runner=mock_dependencies["process_runner"],
-            function_loader=mock_dependencies["function_loader"],
             run_repo=mock_dependencies["run_repo"],
             node_repo=mock_dependencies["node_repo"],
             io_handler=mock_dependencies["io_handler"],
@@ -1518,7 +1508,6 @@ class TestRunbookEngine:
         engine = RunbookEngine(
             clock=mock_dependencies["clock"],
             process_runner=mock_dependencies["process_runner"],
-            function_loader=mock_dependencies["function_loader"],
             run_repo=mock_dependencies["run_repo"],
             node_repo=mock_dependencies["node_repo"],
             io_handler=mock_dependencies["io_handler"],

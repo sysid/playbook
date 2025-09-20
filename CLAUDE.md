@@ -78,7 +78,7 @@ The codebase follows **Hexagonal Architecture** with clear separation:
   - `parser.py`: TOML runbook file parser with variable support
   - `variables.py`: Jinja2-based variable management and templating
   - `process.py`: Shell command execution
-  - `functions.py`: Python function loading and execution
+  - `functions.py`: Legacy file (deprecated)
   - `visualization.py`: Graphviz DOT export
 
 - **CLI** (`src/playbook/cli/`): Modular command-line interface
@@ -98,7 +98,7 @@ The codebase follows **Hexagonal Architecture** with clear separation:
 ### Node Types
 - **Manual**: Requires human approval/interaction
 - **Command**: Executes shell commands
-- **Function**: Calls Python functions dynamically
+- **Function**: Executes plugin functions with built-in utilities
 
 ### State Management
 - Execution state persisted in SQLite (configurable path, default: `~/.config/playbook/run.db`)
@@ -219,7 +219,7 @@ playbook validate deploy.playbook.toml --check-vars
   - `src/playbook/infrastructure/persistence.py`: SQLite execution tracking
   - `src/playbook/infrastructure/parser.py`: TOML parsing and validation
   - `src/playbook/infrastructure/process.py`: Command execution
-  - `src/playbook/infrastructure/functions.py`: Python function loading
+  - `src/playbook/infrastructure/functions.py`: Legacy file (deprecated, replaced by plugins)
 
 ### Partially Tested Components ⚠️
 **CLI & Configuration** - Moderate coverage:
