@@ -1,0 +1,10 @@
+# Development environment variables
+APP_NAME = "myapp-dev"
+ENVIRONMENT = "dev"
+VERSION = "main"
+TIMEOUT = 600
+SKIP_TESTS = false
+REPLICA_COUNT = 1
+ENABLE_MONITORING = false
+DATABASE_URL = "postgresql://user:pass@localhost:5432/myapp_dev"
+SECRET_KEY = "dev-secret-key-not-for-production"

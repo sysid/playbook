@@ -65,7 +65,7 @@ make clean
 The codebase follows **Hexagonal Architecture** with clear separation:
 
 - **Domain** (`src/playbook/domain/`): Core business models and ports
-  - `models.py`: Pydantic models for Runbook, Node types (Manual/Command/Function), execution states
+  - `models.py`: Pydantic models for Runbook, Node types (Manual/Command/Function), execution states, and variable definitions
   - `ports.py`: Abstract interfaces for external dependencies
   - `exceptions.py`: Custom exception hierarchy with context and actionable suggestions
 
@@ -75,7 +75,8 @@ The codebase follows **Hexagonal Architecture** with clear separation:
 
 - **Infrastructure** (`src/playbook/infrastructure/`): External adapters
   - `persistence.py`: SQLite repositories for runs and node executions
-  - `parser.py`: TOML runbook file parser
+  - `parser.py`: TOML runbook file parser with variable support
+  - `variables.py`: Jinja2-based variable management and templating
   - `process.py`: Shell command execution
   - `functions.py`: Python function loading and execution
   - `visualization.py`: Graphviz DOT export
@@ -113,11 +114,61 @@ The codebase follows **Hexagonal Architecture** with clear separation:
 - **Non-critical nodes**: Can be skipped to continue workflow execution
 - **Progress preservation**: Retry loops maintain progress bar state correctly
 
+### Variable Support
+- **Jinja2 templating**: Full Jinja2 support for dynamic workflows with variables, filters, and conditionals
+- **Variable definitions**: Declare variables in `[variables]` section with types, defaults, and constraints
+- **Multiple sources**: Variables from CLI args (`--var`), files (`--vars-file`), environment (`--vars-env`), and defaults
+- **Priority merging**: CLI > file > environment > defaults
+- **Type validation**: Support for string, int, float, bool, and list types with constraints
+- **Interactive prompts**: Missing required variables prompt interactively (unless `--no-interactive-vars`)
+- **Variable file formats**: Support for TOML, JSON, YAML, and .env formats
+
+#### Variable Definition Schema
+```toml
+[variables]
+APP_NAME = { default = "myapp", description = "Application name" }
+ENVIRONMENT = { required = true, choices = ["dev", "staging", "prod"] }
+PORT = { default = 8080, type = "int", min = 1024, max = 65535 }
+DEBUG = { default = false, type = "bool" }
+SERVICES = { default = ["api", "web"], type = "list" }
+```
+
+#### Usage Examples
+```bash
+# CLI variables
+playbook run deploy.playbook.toml --var ENVIRONMENT=prod --var VERSION=1.2.3
+
+# Variable file
+playbook run deploy.playbook.toml --vars-file production.vars.toml
+
+# Environment variables (PLAYBOOK_VAR_*)
+export PLAYBOOK_VAR_ENVIRONMENT=staging
+playbook run deploy.playbook.toml --vars-env PLAYBOOK_VAR_
+
+# Check variable requirements
+playbook validate deploy.playbook.toml --check-vars
+```
+
+#### Template Features
+- **Simple substitution**: `{{VAR_NAME}}`
+- **Defaults**: `{{VAR_NAME|default('fallback')}}`
+- **Filters**: `{{APP_NAME|upper}}`, `{{SERVICES|join(', ')}}`
+- **Conditionals**: `{% if ENVIRONMENT == 'prod' %}critical{% endif %}`
+- **Loops**: `{% for service in SERVICES %}deploy {{service}} && {% endfor %}`
+
 ### CLI Commands
 - `playbook create`: Interactive runbook creation with node templates
 - `playbook validate`: Validate runbook syntax and DAG structure with rich error reporting
+  - `--check-vars`: Display variable requirements and definitions
+  - `--var KEY=VALUE`: Provide variables for validation
+  - `--vars-file PATH`: Load variables from file for validation
 - `playbook run [--max-retries N]`: Execute runbook from start with optional retry limit
+  - `--var KEY=VALUE`: Set individual variables
+  - `--vars-file PATH`: Load variables from file
+  - `--vars-env PREFIX`: Load variables from environment (default: PLAYBOOK_VAR_)
+  - `--no-interactive-vars`: Don't prompt for missing required variables
 - `playbook resume <run_id> [--max-retries N]`: Resume failed execution with optional retry limit
+  - Same variable options as `run` command
 - `playbook view-dag`: Generate and view DAG as PNG image (requires Graphviz)
   - Always saves PNG file in same directory as TOML file
   - `--keep-dot`: also save DOT file

@@ -402,7 +402,7 @@ class RunbookEngine:
             workflow_name=runbook.title,
             run_id=run_info.run_id,
             node_id=node_id,
-            attempt=1,  # TODO: Handle retries
+            attempt=1,
             start_time=start_time,
             status=NodeStatus.RUNNING,
         )

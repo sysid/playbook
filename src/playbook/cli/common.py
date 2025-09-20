@@ -7,7 +7,7 @@ from typing import Optional
 
 from rich.console import Console
 
-from ..config import load_config
+from ..config import config_manager
 from .error_handler import ErrorHandler
 from ..infrastructure.functions import PythonFunctionLoader
 from ..infrastructure.parser import RunbookParser
@@ -16,6 +16,7 @@ from ..infrastructure.persistence import (
     SQLiteNodeExecutionRepository,
 )
 from ..infrastructure.process import ShellProcessRunner
+from ..infrastructure.variables import VariableManager
 from ..service.engine import RunbookEngine
 from .interaction.handlers import SystemClock
 from ..domain.ports import NodeIOHandler
@@ -31,20 +32,19 @@ def get_engine(
 ) -> RunbookEngine:
     """Create and configure the runbook engine"""
     # Load configuration
-    config = load_config()
+    config = config_manager.get_config()
 
     # Override state path if provided
-    if state_path:
-        config["state_path"] = state_path
+    db_path = state_path or config.database.path
 
-    logger.debug(f"Using state path: {config['state_path']}")
+    logger.debug(f"Using state path: {db_path}")
 
     # Create dependencies
     clock = SystemClock()
     process_runner = ShellProcessRunner()
     function_loader = PythonFunctionLoader()
-    run_repo = SQLiteRunRepository(config["state_path"])
-    node_repo = SQLiteNodeExecutionRepository(config["state_path"])
+    run_repo = SQLiteRunRepository(db_path)
+    node_repo = SQLiteNodeExecutionRepository(db_path)
 
     # Create engine
     return RunbookEngine(
@@ -57,9 +57,15 @@ def get_engine(
     )
 
 
-def get_parser() -> RunbookParser:
-    """Get a runbook parser instance"""
-    return RunbookParser()
+def get_parser(interactive: bool = True) -> RunbookParser:
+    """Get a runbook parser instance with variable support"""
+    variable_manager = VariableManager(interactive=interactive)
+    return RunbookParser(variable_manager=variable_manager)
+
+
+def get_variable_manager(interactive: bool = True) -> VariableManager:
+    """Get a variable manager instance"""
+    return VariableManager(interactive=interactive)
 
 
 def get_error_handler(debug: bool = False) -> ErrorHandler:

@@ -16,6 +16,7 @@ It supports manual approvals, shell commands, and Python functions as workflow s
 ## 🚀 Features
 
 - Runbook execution from **TOML-defined DAGs**
+- **Variable support** with Jinja2 templating for dynamic workflows
 - Manual, command, and function nodes
 - Rich CLI interface with progress display and user interaction
 - Execution state stored in **SQLite** (resumable)
@@ -98,6 +99,44 @@ description     = "Notify stakeholders"
 depends_on      = ["build", "tests"]
 ```
 
+### Variables
+
+Make workflows dynamic with variable support. Define variables in a `[variables]` section:
+
+```toml
+[variables]
+APP_NAME = { default = "myapp", description = "Application name" }
+ENVIRONMENT = { required = true, choices = ["dev", "staging", "prod"] }
+VERSION = { default = "latest", description = "Version to deploy" }
+TIMEOUT = { default = 300, type = "int", min = 60, max = 3600 }
+
+[runbook]
+title = "Deploy {{APP_NAME}} to {{ENVIRONMENT}}"
+description = "Deploy {{APP_NAME}} version {{VERSION}}"
+# ... rest of runbook metadata
+
+[deploy]
+type = "Command"
+command_name = "kubectl apply -f {{APP_NAME}}-{{ENVIRONMENT}}.yaml"
+description = "Deploy {{APP_NAME}} version {{VERSION}} to {{ENVIRONMENT}}"
+timeout = "{{TIMEOUT}}"
+critical = "{% if ENVIRONMENT == 'prod' %}true{% else %}false{% endif %}"
+depends_on = []
+```
+
+#### Variable Sources (Priority Order)
+1. **CLI arguments**: `--var ENVIRONMENT=prod --var VERSION=1.2.3`
+2. **Variable files**: `--vars-file production.vars.toml`
+3. **Environment variables**: `--vars-env PLAYBOOK_VAR_` (loads PLAYBOOK_VAR_*)
+4. **Defaults**: From variable definitions in workflow file
+
+#### Jinja2 Features
+- **Simple substitution**: `{{VAR_NAME}}`
+- **Defaults**: `{{VAR_NAME|default('fallback')}}`
+- **Filters**: `{{APP_NAME|upper}}`, `{{SERVICES|join(', ')}}`
+- **Conditionals**: `{% if ENVIRONMENT == 'prod' %}critical{% endif %}`
+- **Loops**: `{% for service in SERVICES %}deploy {{service}} && {% endfor %}`
+
 ### Details and Specification
 More info: [DAG.md](doc/DAG.md)
 
@@ -113,13 +152,30 @@ playbook create --title "My Workflow" --author "Your Name"
 ### Validate a runbook
 
 ```bash
+# Basic validation
 playbook validate path/to/runbook.playbook.toml
+
+# Check variable requirements
+playbook validate path/to/runbook.playbook.toml --check-vars
+
+# Validate with specific variables
+playbook validate path/to/runbook.playbook.toml --var ENVIRONMENT=prod
 ```
 
 ### Execute a workflow
 
 ```bash
+# Basic execution (prompts for required variables)
 playbook run path/to/runbook.playbook.toml
+
+# With CLI variables
+playbook run path/to/runbook.playbook.toml --var ENVIRONMENT=prod --var VERSION=1.2.3
+
+# With variable file
+playbook run path/to/runbook.playbook.toml --vars-file production.vars.toml
+
+# Non-interactive execution
+playbook run path/to/runbook.playbook.toml --vars-file vars.toml --no-interactive-vars
 ```
 
 ### Resume a failed workflow
