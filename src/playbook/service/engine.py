@@ -29,6 +29,7 @@ from ..domain.plugins import (
     FunctionNotFoundError,
 )
 from ..infrastructure.plugin_registry import plugin_registry
+from ..infrastructure.conditions import ConditionEvaluator, ConditionContext
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +50,7 @@ class RunbookEngine:
         self.run_repo = run_repo
         self.node_repo = node_repo
         self.io_handler = io_handler
+        self.condition_evaluator = ConditionEvaluator()
 
         # Initialize plugin system
         self._initialize_plugins()
@@ -69,7 +71,9 @@ class RunbookEngine:
         except Exception as e:
             logger.error(f"Failed to initialize plugin system: {e}")
 
-    def validate(self, runbook: Runbook) -> List[str]:
+    def validate(
+        self, runbook: Runbook, variables: Optional[Dict[str, Any]] = None
+    ) -> List[str]:
         """Validate runbook for correctness"""
         errors = []
 
@@ -80,6 +84,18 @@ class RunbookEngine:
                     errors.append(
                         f"Node '{node_id}' depends on non-existent node '{dep_id}'"
                     )
+
+        # Validate 'when' conditions
+        for node_id, node in runbook.nodes.items():
+            if hasattr(node, "when") and node.when and node.when != "true":
+                try:
+                    # Try to create a template to check syntax
+                    from jinja2 import Environment, BaseLoader
+
+                    env = Environment(loader=BaseLoader())
+                    env.from_string(node.when)
+                except Exception as e:
+                    errors.append(f"Invalid 'when' condition in node '{node_id}': {e}")
 
         # Only check for cycles if all dependencies exist
         if not errors:
@@ -120,6 +136,57 @@ class RunbookEngine:
                     return True
 
         return False
+
+    def _should_execute_node(
+        self,
+        node: BaseNode,
+        runbook: Runbook,
+        run_info: RunInfo,
+        variables: Optional[Dict[str, Any]] = None,
+    ) -> bool:
+        """Check if a node should be executed based on its 'when' condition.
+
+        Args:
+            node: Node to check
+            runbook: Current runbook
+            run_info: Current run information
+            variables: Workflow variables
+
+        Returns:
+            True if node should execute, False if it should be skipped
+        """
+        if variables is None:
+            variables = {}
+
+        # Default to execute if no condition or condition is "true"
+        if not hasattr(node, "when") or node.when in ("true", "True", ""):
+            return True
+
+        try:
+            # Get all existing executions for this run to build context
+            executions = self.node_repo.get_executions(runbook.title, run_info.run_id)
+
+            # Create execution map (use latest execution per node)
+            execution_map = {}
+            for execution in executions:
+                node_id = execution.node_id
+                if (
+                    node_id not in execution_map
+                    or execution.attempt > execution_map[node_id].attempt
+                ):
+                    execution_map[node_id] = execution
+
+            # Create condition context
+            context = ConditionContext(execution_map)
+
+            # Evaluate the condition
+            result = self.condition_evaluator.evaluate(node.when, variables, context)
+            return result
+
+        except Exception as e:
+            logger.error(f"Error evaluating condition for node '{node.id}': {e}")
+            # On error, default to execute (fail-open for safety)
+            return True
 
     def _get_execution_order(self, runbook: Runbook) -> List[str]:
         """Calculate topological sort of nodes
@@ -288,6 +355,7 @@ class RunbookEngine:
         node_id: str,
         run_info: RunInfo,
         existing_execution: NodeExecution,
+        variables: Optional[Dict[str, Any]] = None,
     ) -> Tuple[NodeStatus, NodeExecution]:
         """Resume execution of a node that was already started"""
         node = runbook.nodes[node_id]
@@ -334,7 +402,12 @@ class RunbookEngine:
         return existing_execution.status, existing_execution
 
     def execute_node_with_existing_record(
-        self, runbook: Runbook, node_id: str, run_info: RunInfo, attempt: int
+        self,
+        runbook: Runbook,
+        node_id: str,
+        run_info: RunInfo,
+        attempt: int,
+        variables: Optional[Dict[str, Any]] = None,
     ) -> Tuple[NodeStatus, NodeExecution]:
         """Execute a node while using an existing execution record"""
         node = runbook.nodes[node_id]
@@ -354,7 +427,12 @@ class RunbookEngine:
         return result.status, result
 
     def execute_node_retry(
-        self, runbook: Runbook, node_id: str, run_info: RunInfo, attempt: int
+        self,
+        runbook: Runbook,
+        node_id: str,
+        run_info: RunInfo,
+        attempt: int,
+        variables: Optional[Dict[str, Any]] = None,
     ) -> Tuple[NodeStatus, NodeExecution]:
         """Execute a node retry, creating a new execution record with the specified attempt number"""
         node = runbook.nodes[node_id]
@@ -392,7 +470,11 @@ class RunbookEngine:
         return execution.status, execution
 
     def execute_node(
-        self, runbook: Runbook, node_id: str, run_info: RunInfo
+        self,
+        runbook: Runbook,
+        node_id: str,
+        run_info: RunInfo,
+        variables: Optional[Dict[str, Any]] = None,
     ) -> Tuple[NodeStatus, NodeExecution]:
         """Execute a single node"""
         node = runbook.nodes[node_id]
@@ -415,6 +497,28 @@ class RunbookEngine:
 
             self.io_handler.handle_description_output(
                 node_id, node.name, f"Skipped node: {node.description or ''}"
+            )
+
+            return execution.status, execution
+
+        # Check 'when' condition
+        if not self._should_execute_node(node, runbook, run_info, variables):
+            execution = NodeExecution(
+                workflow_name=runbook.title,
+                run_id=run_info.run_id,
+                node_id=node_id,
+                attempt=1,
+                start_time=start_time,
+                end_time=self.clock.now(),
+                status=NodeStatus.SKIPPED,
+                result_text=f"Node skipped due to condition: {node.when}",
+            )
+            self.node_repo.create_execution(execution)
+
+            self.io_handler.handle_description_output(
+                node_id,
+                node.name,
+                f"Skipped node (condition not met): {node.description or ''}",
             )
 
             return execution.status, execution
