@@ -1,0 +1,37 @@
+[runbook]
+title = "Simple Bash Commands Example"
+description = """
+Basic example demonstrating a single Command node executing multiple bash commands sequentially.
+This workflow shows how to chain simple shell operations within a single node,
+useful for quick automation tasks and basic system operations.
+"""
+version = "1.0.0"
+author = "Playbook Team"
+created_at = "2025-01-20T12:00:00Z"
+
+[run_bash_commands]
+type = "Command"
+command_name = """
+#!/bin/bash
+set -e
+echo "Starting sequential bash commands..."
+echo "Current date and time: $(date)"
+echo "Current working directory: $(pwd)"
+echo "Current user: $(whoami)"
+echo "System information:"
+uname -a
+echo "Available disk space:"
+df -h | head -5
+echo "Memory usage:"
+free -h || vm_stat | head -10
+echo "Process count: $(ps aux | wc -l)"
+echo "All commands completed successfully!"
+"""
+description = """
+Execute a series of simple bash commands to display system information.
+This demonstrates running multiple shell commands sequentially within a single node,
+including date/time, user info, system details, disk space, and memory usage.
+All commands are executed in sequence with error handling enabled.
+"""
+depends_on = []
+timeout = 60
