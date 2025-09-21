@@ -42,6 +42,7 @@ class BaseNode(BaseModel):
     prompt_before: str = ""
     prompt_after: str = "Continue with the next step?"  # "" for no prompt
     skip: bool = False
+    when: str = "true"  # Conditional execution clause, defaults to always execute
 
 
 class ManualNode(BaseNode):

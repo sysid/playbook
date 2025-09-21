@@ -17,6 +17,8 @@ from ..domain.models import (
 )
 from .variables import VariableManager, VariableValidationError
 from ..domain.exceptions import ConfigurationError
+from .conditions import parse_dependencies
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -126,9 +128,10 @@ class RunbookParser:
             pass
 
         # Apply templating to the raw content if we have variables
+        # But protect 'when' clauses from substitution (they should be evaluated at runtime)
         if self.variable_manager and final_variables:
             try:
-                processed_content = self.variable_manager.substitute_in_string(
+                processed_content = self._substitute_variables_preserve_when(
                     raw_content, final_variables
                 )
             except Exception as e:
@@ -174,6 +177,27 @@ class RunbookParser:
             node_data["id"] = node_id
             if "name" not in node_data:
                 node_data["name"] = node_id
+
+            # Process conditional dependencies if present
+            if "depends_on" in node_data:
+                depends_on = node_data["depends_on"]
+                if isinstance(depends_on, list):
+                    # Parse conditional dependencies
+                    clean_depends_on, when_clause = parse_dependencies(depends_on)
+                    node_data["depends_on"] = clean_depends_on
+
+                    # If there are conditional clauses and no explicit 'when', set it
+                    if when_clause != "true" and "when" not in node_data:
+                        node_data["when"] = when_clause
+                    elif "when" in node_data and when_clause != "true":
+                        # Combine existing 'when' with conditional dependencies using AND
+                        existing_when = node_data["when"]
+                        # Strip template markers for combination
+                        existing_condition = existing_when.strip("{}").strip()
+                        new_condition = when_clause.strip("{}").strip()
+                        node_data["when"] = (
+                            f"{{{{ ({existing_condition}) and ({new_condition}) }}}}"
+                        )
 
             # Create appropriate node type
             node_type = node_data["type"]
@@ -254,6 +278,41 @@ class RunbookParser:
                     )
 
         return variable_definitions
+
+    def _substitute_variables_preserve_when(
+        self, content: str, variables: Dict[str, Any]
+    ) -> str:
+        """Apply variable substitution while preserving 'when' clauses.
+
+        This method protects 'when' field values from variable substitution
+        so they can be evaluated at runtime with proper context.
+        """
+        # Find all 'when' lines and temporarily replace them with placeholders
+        when_pattern = r"^(\s*when\s*=\s*)(.*?)$"
+        when_clauses = []
+        placeholder_content = content
+
+        def replace_when(match):
+            when_clauses.append(match.group(2))  # Store the when clause value
+            placeholder_index = len(when_clauses) - 1
+            return f"{match.group(1)}__WHEN_PLACEHOLDER_{placeholder_index}__"
+
+        # Replace when clauses with placeholders
+        placeholder_content = re.sub(
+            when_pattern, replace_when, content, flags=re.MULTILINE
+        )
+
+        # Apply variable substitution to the content with placeholders
+        substituted_content = self.variable_manager.substitute_in_string(
+            placeholder_content, variables
+        )
+
+        # Restore the original when clauses
+        for i, when_clause in enumerate(when_clauses):
+            placeholder = f"__WHEN_PLACEHOLDER_{i}__"
+            substituted_content = substituted_content.replace(placeholder, when_clause)
+
+        return substituted_content
 
     def save(self, runbook: Runbook, file_path: str) -> None:
         """Save a runbook to file (for create command)"""

@@ -1,0 +1,101 @@
+# Conditional Deployment Workflow Example
+# This example demonstrates conditional branching based on node outcomes
+
+[variables]
+ENVIRONMENT = { required = true, choices = ["dev", "staging", "prod"], description = "Target deployment environment" }
+SKIP_TESTS = { default = false, type = "bool", description = "Skip running tests" }
+ENABLE_ROLLBACK = { default = true, type = "bool", description = "Enable automatic rollback on failure" }
+
+[runbook]
+title = "Conditional Deployment Pipeline"
+description = "Advanced deployment pipeline with conditional branching based on test results and environment"
+version = "1.0.0"
+author = "devops-team"
+created_at = "2025-01-20T12:00:00Z"
+
+# Build the application (always runs)
+[build_application]
+type = "Command"
+command_name = "npm run build"
+description = "Build the application"
+depends_on = []
+
+# Run tests (conditional based on SKIP_TESTS variable)
+[run_tests]
+type = "Command"
+command_name = "npm test"
+description = "Run unit and integration tests"
+depends_on = ["build_application"]
+when = "{{ not SKIP_TESTS and has_succeeded('build_application') }}"
+
+# Security scan (only for production)
+[security_scan]
+type = "Command"
+command_name = "npm audit --audit-level high"
+description = "Run security audit"
+depends_on = ["build_application"]
+when = "{{ ENVIRONMENT == 'prod' and has_succeeded('build_application') }}"
+
+# Deploy to development (only if build succeeded and environment is dev)
+[deploy_development]
+type = "Command"
+command_name = "deploy.sh dev"
+description = "Deploy to development environment"
+depends_on = ["build_application"]
+when = "{{ ENVIRONMENT == 'dev' and has_succeeded('build_application') }}"
+
+# Deploy to staging (only if tests pass and environment is staging)
+[deploy_staging]
+type = "Command"
+command_name = "deploy.sh staging"
+description = "Deploy to staging environment"
+depends_on = ["run_tests"]
+when = "{{ ENVIRONMENT == 'staging' and (SKIP_TESTS or has_succeeded('run_tests')) }}"
+
+# Manual approval for production (only for prod environment)
+[production_approval]
+type = "Manual"
+prompt_after = "Ready to deploy to production? This will affect live users."
+description = "Manual approval for production deployment"
+depends_on = ["run_tests", "security_scan"]
+when = "{{ ENVIRONMENT == 'prod' }}"
+
+# Deploy to production (only after approval and all checks pass)
+[deploy_production]
+type = "Command"
+command_name = "deploy.sh prod"
+description = "Deploy to production environment"
+depends_on = ["production_approval"]
+when = "{{ ENVIRONMENT == 'prod' and has_succeeded('production_approval') and (SKIP_TESTS or has_succeeded('run_tests')) and has_succeeded('security_scan') }}"
+
+# Health check (runs after any deployment)
+[health_check]
+type = "Command"
+command_name = "curl -f https://{{ENVIRONMENT}}.myapp.com/health"
+description = "Verify deployment health"
+depends_on = ["deploy_development", "deploy_staging", "deploy_production"]
+when = "{{ has_succeeded('deploy_development') or has_succeeded('deploy_staging') or has_succeeded('deploy_production') }}"
+
+# Rollback (only if health check fails and rollback is enabled)
+[rollback_deployment]
+type = "Command"
+command_name = "rollback.sh {{ENVIRONMENT}}"
+description = "Rollback failed deployment"
+depends_on = ["health_check"]
+when = "{{ ENABLE_ROLLBACK and has_failed('health_check') }}"
+
+# Notification for successful deployment
+[notify_success]
+type = "Manual"
+prompt_after = "Deployment completed successfully. Continue?"
+description = "Notify team of successful deployment"
+depends_on = ["health_check"]
+when = "{{ has_succeeded('health_check') }}"
+
+# Notification for failed deployment
+[notify_failure]
+type = "Manual"
+prompt_after = "Deployment failed. Incident response may be required. Continue?"
+description = "Notify team of deployment failure"
+depends_on = ["deploy_development", "deploy_staging", "deploy_production", "rollback_deployment"]
+when = "{{ has_failed('deploy_development') or has_failed('deploy_staging') or has_failed('deploy_production') or has_succeeded('rollback_deployment') }}"

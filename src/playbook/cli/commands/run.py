@@ -211,7 +211,14 @@ def _execute_workflow(
 
     # Execute the workflow
     _execute_nodes(
-        engine, runbook, run_info, nodes_to_run, progress, io_handler, max_retries
+        engine,
+        runbook,
+        run_info,
+        nodes_to_run,
+        progress,
+        io_handler,
+        max_retries,
+        variables,
     )
 
 
@@ -271,6 +278,7 @@ def _execute_nodes(
     progress: Progress,
     io_handler: ConsoleNodeIOHandler,
     max_retries: int = 3,
+    variables: Optional[dict] = None,
 ) -> None:
     """
     Execute the given nodes in the runbook
@@ -311,12 +319,12 @@ def _execute_nodes(
             if existing_execution and existing_execution.status != NodeStatus.OK:
                 # Resume with existing record
                 status, execution = engine.resume_node_execution(
-                    runbook, current_node_id, run_info, existing_execution
+                    runbook, current_node_id, run_info, existing_execution, variables
                 )
             else:
                 # Create new execution record (for fresh nodes)
                 status, execution = engine.execute_node(
-                    runbook, current_node_id, run_info
+                    runbook, current_node_id, run_info, variables
                 )
 
             # Update progress based on result
@@ -408,7 +416,11 @@ def _execute_nodes(
 
                             # Execute single retry attempt creating a new execution record
                             status, execution = engine.execute_node_retry(
-                                runbook, current_node_id, run_info, next_attempt
+                                runbook,
+                                current_node_id,
+                                run_info,
+                                next_attempt,
+                                variables,
                             )
 
                             if status == NodeStatus.OK:

@@ -1,0 +1,60 @@
+# Conditional Dependencies Syntax Example
+# This example demonstrates the shorthand conditional dependency syntax
+
+[runbook]
+title = "Conditional Dependencies Example"
+description = "Demonstrates conditional dependency syntax (node_id:success/failure)"
+version = "1.0.0"
+author = "devops-team"
+created_at = "2025-01-20T12:00:00Z"
+
+# Build step (always runs first)
+[build]
+type = "Command"
+command_name = "make build"
+description = "Build the application"
+depends_on = []
+
+# Test step (depends on build completing)
+[test]
+type = "Command"
+command_name = "make test"
+description = "Run tests"
+depends_on = ["build"]
+
+# Deploy step (only runs if tests succeed)
+[deploy]
+type = "Command"
+command_name = "make deploy"
+description = "Deploy application"
+depends_on = ["test:success"]  # Shorthand for: when = "{{ has_succeeded('test') }}"
+
+# Rollback step (only runs if deploy fails)
+[rollback]
+type = "Command"
+command_name = "make rollback"
+description = "Rollback deployment"
+depends_on = ["deploy:failure"]  # Shorthand for: when = "{{ has_failed('deploy') }}"
+
+# Cleanup success (runs if deploy succeeds)
+[cleanup_success]
+type = "Command"
+command_name = "cleanup.sh --mode=success"
+description = "Clean up after successful deployment"
+depends_on = ["deploy:success"]
+
+# Cleanup failure (runs if deploy fails OR rollback succeeds)
+[cleanup_failure]
+type = "Command"
+command_name = "cleanup.sh --mode=failure"
+description = "Clean up after failed deployment"
+depends_on = ["deploy:failure", "rollback:success"]  # Multiple conditions with AND
+
+# Notification (runs after any cleanup)
+[notify]
+type = "Manual"
+prompt_after = "Deployment process completed. Review logs and continue."
+description = "Final notification"
+depends_on = ["cleanup_success", "cleanup_failure"]
+# This will run if either cleanup_success OR cleanup_failure completes
+# (regular dependencies are OR by default, conditions within depends_on are AND)
