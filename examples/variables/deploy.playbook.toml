@@ -7,7 +7,11 @@ TIMEOUT = { default = 300, type = "int", description = "Command timeout in secon
 
 [runbook]
 title = "Deploy {{APP_NAME}}"
-description = "Deploy {{APP_NAME}} version {{VERSION}} to {{ENVIRONMENT}}"
+description = """
+Comprehensive deployment workflow for {{APP_NAME}} version {{VERSION}} to {{ENVIRONMENT}}.
+This workflow handles the complete deployment lifecycle including pre-deployment validation,
+service deployment with monitoring, health verification, and stakeholder notification.
+"""
 version = "1.0.0"
 author = "devops"
 created_at = "2025-01-20T12:00:00Z"
@@ -15,32 +19,45 @@ created_at = "2025-01-20T12:00:00Z"
 [pre_deploy_check]
 type = "Manual"
 prompt_after = "Ready to deploy {{APP_NAME}} {{VERSION}} to {{ENVIRONMENT}}? This will affect the {{ENVIRONMENT}} environment."
-description = "Pre-deployment confirmation"
+description = """
+Pre-deployment confirmation step that ensures all prerequisites are met.
+This manual checkpoint allows for final review of deployment parameters,
+verification of system readiness, and abort if conditions are not optimal.
+"""
 depends_on = []
 
 [deploy_application]
 type = "Command"
 command_name = "docker run --rm -v $(pwd):/workspace deploy-tool:latest deploy --app={{APP_NAME}} --version={{VERSION}} --env={{ENVIRONMENT}} --timeout={{TIMEOUT}}"
-description = "Deploy {{APP_NAME}} to {{ENVIRONMENT}}"
+description = """
+Deploy {{APP_NAME}} version {{VERSION}} to the {{ENVIRONMENT}} environment.
+This step handles container deployment, service updates, configuration changes,
+and ensures proper rollout strategy with monitoring for any issues.
+"""
 timeout = "{{TIMEOUT}}"
 depends_on = ["pre_deploy_check"]
 
 [health_check]
 type = "Command"
 command_name = "curl -f https://{{APP_NAME}}-{{ENVIRONMENT}}.company.com/health || exit 1"
-description = "Verify {{APP_NAME}} is healthy in {{ENVIRONMENT}}"
+description = """
+Perform comprehensive health check for {{APP_NAME}} in {{ENVIRONMENT}}.
+Validates service endpoints, database connectivity, external dependencies,
+and ensures the application is fully operational before proceeding.
+"""
 timeout = 60
 depends_on = ["deploy_application"]
 
 [post_deploy_notification]
 type = "Function"
-function_name = "send_slack_notification"
-description = "Send deployment notification"
+plugin = "python"
+function = "notify"
+description = """
+Send deployment completion notification to relevant teams and stakeholders.
+Includes deployment summary, version information, environment details,
+and links to monitoring dashboards for post-deployment tracking.
+"""
 depends_on = ["health_check"]
 
 [post_deploy_notification.function_params]
-channel = "{% if ENVIRONMENT == 'prod' %}#deployments{% else %}#dev-deployments{% endif %}"
 message = "✅ Successfully deployed {{APP_NAME}} {{VERSION}} to {{ENVIRONMENT}}"
-app = "{{APP_NAME}}"
-version = "{{VERSION}}"
-environment = "{{ENVIRONMENT}}"

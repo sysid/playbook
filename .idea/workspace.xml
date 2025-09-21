@@ -5,10 +5,14 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="5a384825-87f7-4752-bb95-dcf8d7a51e56" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/examples/conditional_dependencies.playbook.toml" beforeDir="false" afterPath="$PROJECT_DIR$/examples/conditional_dependencies.playbook.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/examples/conditional_deployment.playbook.toml" beforeDir="false" afterPath="$PROJECT_DIR$/examples/conditional_deployment.playbook.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/examples/plugin-auto.playbook.toml" beforeDir="false" afterPath="$PROJECT_DIR$/examples/plugin-auto.playbook.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/examples/plugin.playbook.toml" beforeDir="false" afterPath="$PROJECT_DIR$/examples/plugin.playbook.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/examples/variables/deploy.playbook.toml" beforeDir="false" afterPath="$PROJECT_DIR$/examples/variables/deploy.playbook.toml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/playbook/cli/commands/run.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/playbook/cli/commands/run.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/playbook/domain/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/playbook/domain/models.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/playbook/infrastructure/parser.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/playbook/infrastructure/parser.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/playbook/service/engine.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/playbook/service/engine.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/xxx.playbook.toml" beforeDir="false" afterPath="$PROJECT_DIR$/xxx.playbook.toml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -47,7 +51,7 @@
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.git.unshallow": "true",
     "SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "git-widget-placeholder": "feat/conditional",
+    "git-widget-placeholder": "main",
     "last_opened_file_path": "/Users/Q187392/dev/s/private/playbook",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
@@ -244,12 +248,12 @@
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/playbook/service/engine.py</url>
-          <line>575</line>
+          <line>592</line>
           <option name="timeStamp" value="4" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/playbook/service/engine.py</url>
-          <line>260</line>
+          <line>261</line>
           <option name="timeStamp" value="5" />
         </line-breakpoint>
       </breakpoints>

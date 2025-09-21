@@ -1,6 +1,10 @@
 [runbook]
 title = "Python Plugin Demo (Fully Automated)"
-description = "Automated demo of Python plugin functionality"
+description = """
+Automated demonstration of Python plugin functionality and built-in utilities.
+This workflow runs without user interaction to showcase the notify, sleep, and
+error handling capabilities of the Python plugin system.
+"""
 version = "1.0.0"
 author = "Playbook Team"
 created_at = "2025-01-20T12:00:00Z"
@@ -13,7 +17,11 @@ type = "Function"
 plugin = "python"
 function = "notify"
 function_params = { message = "🚀 Starting automated Python plugin demo for {{APP_NAME}}" }
-description = "Send startup notification"
+description = """
+Send startup notification to begin the automated Python plugin demonstration.
+This notification marks the beginning of the workflow and provides visibility
+into the automated execution of various Python utility functions.
+"""
 depends_on = []
 
 [demonstrate_sleep]
@@ -21,7 +29,11 @@ type = "Function"
 plugin = "python"
 function = "sleep"
 function_params = { seconds = 1 }
-description = "Demonstrate Python sleep function (1 second)"
+description = """
+Demonstrate the Python sleep utility function with a 1-second delay.
+This showcases how Python plugins can handle time-based operations,
+waiting periods, and controlled delays within workflow execution.
+"""
 depends_on = ["start_notification"]
 
 
@@ -30,5 +42,9 @@ type = "Function"
 plugin = "python"
 function = "notify"
 function_params = { message = "✅ All Python plugin utility functions (notify, sleep, throw) demonstrated successfully!" }
-description = "Send completion notification"
+description = """
+Send completion notification confirming successful demonstration of all functions.
+This final step summarizes the automated workflow execution and confirms
+that all Python plugin utility functions have been tested successfully.
+"""
 depends_on = ["demonstrate_sleep"]

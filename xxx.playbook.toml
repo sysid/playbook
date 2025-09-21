@@ -26,7 +26,11 @@ echo 'Hello, World!'
 echo "-M- End: $((SECONDS - START_TIME))"
 exit 0
 """
-description  = "Builds the project artifacts"
+description  = """
+Builds the project artifacts including compilation, testing, and packaging.
+This step ensures all dependencies are resolved and the build environment
+is properly configured before proceeding with deployment.
+"""
 depends_on   = []
 timeout      = 300
 name         = "Build step"

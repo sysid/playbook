@@ -8,7 +8,11 @@ ENABLE_ROLLBACK = { default = true, type = "bool", description = "Enable automat
 
 [runbook]
 title = "Conditional Deployment Pipeline"
-description = "Advanced deployment pipeline with conditional branching based on test results and environment"
+description = """
+Advanced deployment pipeline with sophisticated conditional branching logic.
+This workflow demonstrates environment-specific deployment paths, conditional testing,
+security scanning for production, and automated rollback capabilities based on health checks.
+"""
 version = "1.0.0"
 author = "devops-team"
 created_at = "2025-01-20T12:00:00Z"
@@ -17,14 +21,22 @@ created_at = "2025-01-20T12:00:00Z"
 [build_application]
 type = "Command"
 command_name = "npm run build"
-description = "Build the application"
+description = """
+Build the application with all dependencies and prepare artifacts.
+This step compiles the source code, resolves dependencies, and creates
+deployable packages ready for testing and environment-specific deployment.
+"""
 depends_on = []
 
 # Run tests (conditional based on SKIP_TESTS variable)
 [run_tests]
 type = "Command"
 command_name = "npm test"
-description = "Run unit and integration tests"
+description = """
+Execute comprehensive test suite including unit and integration tests.
+Validates code quality, functionality, and integration points to ensure
+the application meets quality standards before deployment proceeds.
+"""
 depends_on = ["build_application"]
 when = "{{ not SKIP_TESTS and has_succeeded('build_application') }}"
 
@@ -32,7 +44,11 @@ when = "{{ not SKIP_TESTS and has_succeeded('build_application') }}"
 [security_scan]
 type = "Command"
 command_name = "npm audit --audit-level high"
-description = "Run security audit"
+description = """
+Perform security audit and vulnerability assessment for production.
+Scans dependencies, checks for known vulnerabilities, and ensures
+security compliance requirements are met before production deployment.
+"""
 depends_on = ["build_application"]
 when = "{{ ENVIRONMENT == 'prod' and has_succeeded('build_application') }}"
 
@@ -40,7 +56,11 @@ when = "{{ ENVIRONMENT == 'prod' and has_succeeded('build_application') }}"
 [deploy_development]
 type = "Command"
 command_name = "deploy.sh dev"
-description = "Deploy to development environment"
+description = """
+Deploy application to the development environment for initial testing.
+Provides a sandbox environment for feature validation, integration testing,
+and early feedback before promoting to higher environments.
+"""
 depends_on = ["build_application"]
 when = "{{ ENVIRONMENT == 'dev' and has_succeeded('build_application') }}"
 
@@ -48,7 +68,11 @@ when = "{{ ENVIRONMENT == 'dev' and has_succeeded('build_application') }}"
 [deploy_staging]
 type = "Command"
 command_name = "deploy.sh staging"
-description = "Deploy to staging environment"
+description = """
+Deploy application to staging environment for pre-production validation.
+Mirrors production environment for final testing, performance validation,
+and stakeholder approval before production release.
+"""
 depends_on = ["run_tests"]
 when = "{{ ENVIRONMENT == 'staging' and (SKIP_TESTS or has_succeeded('run_tests')) }}"
 
@@ -56,7 +80,11 @@ when = "{{ ENVIRONMENT == 'staging' and (SKIP_TESTS or has_succeeded('run_tests'
 [production_approval]
 type = "Manual"
 prompt_after = "Ready to deploy to production? This will affect live users."
-description = "Manual approval for production deployment"
+description = """
+Require manual approval before proceeding with production deployment.
+Critical checkpoint that ensures human oversight, final validation,
+and explicit authorization for changes that will affect live users.
+"""
 depends_on = ["run_tests", "security_scan"]
 when = "{{ ENVIRONMENT == 'prod' }}"
 
@@ -64,7 +92,11 @@ when = "{{ ENVIRONMENT == 'prod' }}"
 [deploy_production]
 type = "Command"
 command_name = "deploy.sh prod"
-description = "Deploy to production environment"
+description = """
+Deploy application to production environment with full monitoring.
+Executes production deployment with careful monitoring, health checks,
+and readiness to rollback if any issues are detected during deployment.
+"""
 depends_on = ["production_approval"]
 when = "{{ ENVIRONMENT == 'prod' and has_succeeded('production_approval') and (SKIP_TESTS or has_succeeded('run_tests')) and has_succeeded('security_scan') }}"
 
@@ -72,7 +104,11 @@ when = "{{ ENVIRONMENT == 'prod' and has_succeeded('production_approval') and (S
 [health_check]
 type = "Command"
 command_name = "curl -f https://{{ENVIRONMENT}}.myapp.com/health"
-description = "Verify deployment health"
+description = """
+Perform comprehensive health check to verify successful deployment.
+Validates service endpoints, database connectivity, and application
+functionality to ensure the deployment is operating correctly.
+"""
 depends_on = ["deploy_development", "deploy_staging", "deploy_production"]
 when = "{{ has_succeeded('deploy_development') or has_succeeded('deploy_staging') or has_succeeded('deploy_production') }}"
 
@@ -80,7 +116,11 @@ when = "{{ has_succeeded('deploy_development') or has_succeeded('deploy_staging'
 [rollback_deployment]
 type = "Command"
 command_name = "rollback.sh {{ENVIRONMENT}}"
-description = "Rollback failed deployment"
+description = """
+Automatically rollback deployment if health checks fail.
+Restores the previous stable version to minimize downtime and impact
+on users when deployment issues are detected.
+"""
 depends_on = ["health_check"]
 when = "{{ ENABLE_ROLLBACK and has_failed('health_check') }}"
 
@@ -88,7 +128,11 @@ when = "{{ ENABLE_ROLLBACK and has_failed('health_check') }}"
 [notify_success]
 type = "Manual"
 prompt_after = "Deployment completed successfully. Continue?"
-description = "Notify team of successful deployment"
+description = """
+Notify stakeholders and team members of successful deployment completion.
+Provides deployment summary, performance metrics, and links to monitoring
+dashboards for ongoing operational awareness.
+"""
 depends_on = ["health_check"]
 when = "{{ has_succeeded('health_check') }}"
 
@@ -96,6 +140,10 @@ when = "{{ has_succeeded('health_check') }}"
 [notify_failure]
 type = "Manual"
 prompt_after = "Deployment failed. Incident response may be required. Continue?"
-description = "Notify team of deployment failure"
+description = """
+Alert team and stakeholders about deployment failure and required actions.
+Triggers incident response procedures, provides failure details,
+and coordinates remediation efforts to restore service quickly.
+"""
 depends_on = ["deploy_development", "deploy_staging", "deploy_production", "rollback_deployment"]
 when = "{{ has_failed('deploy_development') or has_failed('deploy_staging') or has_failed('deploy_production') or has_succeeded('rollback_deployment') }}"

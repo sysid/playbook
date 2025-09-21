@@ -2,7 +2,7 @@
 """Run and resume command implementations."""
 
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 
 import typer
 from rich.progress import Progress, TextColumn, BarColumn, TimeElapsedColumn
@@ -293,6 +293,9 @@ def _execute_nodes(
     with progress:
         task = progress.add_task("Executing workflow...", total=len(nodes_to_run) + 1)
 
+        # Display runbook description and effective variables
+        _display_runbook_info(runbook, variables or {})
+
         for i, current_node_id in enumerate(nodes_to_run):
             node = runbook.nodes[current_node_id]
             node_display_name = node.name or current_node_id
@@ -301,6 +304,7 @@ def _execute_nodes(
             io_handler.set_current_node(current_node_id)
 
             # Add empty lines before each node
+            console.print()
             console.print()
             console.print()
 
@@ -479,3 +483,27 @@ def _execute_nodes(
             progress.update(task, description="Success!", advance=1)
         else:
             console.print("\n[bold red]Run failed[/bold red]")
+
+
+def _display_runbook_info(runbook: Runbook, variables: Dict[str, Any]) -> None:
+    """Display runbook description and effective variables."""
+    console.print()
+
+    # Display runbook description
+    console.print(runbook.description or "No description provided")
+
+    # Display effective variables if any
+    if variables:
+        console.print()
+        for key, value in sorted(variables.items()):
+            # Handle different value types
+            if isinstance(value, str):
+                formatted_value = f'"{value}"'
+            elif isinstance(value, list):
+                formatted_value = str(value)
+            else:
+                formatted_value = str(value)
+
+            console.print(f"{key} = [green]{formatted_value}[/green]")
+
+        console.print()
