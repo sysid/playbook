@@ -1,0 +1,98 @@
+# Basic Slack Notification Example
+# This example demonstrates simple message sending to Slack
+
+[variables]
+SLACK_WEBHOOK = { default = "${SLACK_WEBHOOK_URL}", description = "Slack webhook URL for notifications" }
+APP_NAME = { default = "demo-app", description = "Application name" }
+VERSION = { default = "1.0.0", description = "Application version" }
+
+# Global plugin configuration
+[runbook.plugin_config.slack]
+webhook_url = "{{SLACK_WEBHOOK}}"
+default_channel = "#general"
+timeout = 30
+
+[runbook]
+title = "Basic Slack Notification"
+description = "Send a simple notification to Slack"
+version = "1.0.0"
+author = "DevOps Team"
+created_at = "2025-01-20T12:00:00Z"
+
+# Step 1: Send a basic notification
+[basic_notification]
+type = "Function"
+plugin = "slack"
+function = "send_message"
+function_params = {
+    text = "Hello from Playbook! This is a test notification.",
+    channel = "#general",
+    urgency = "normal"
+}
+description = "Send a basic test notification"
+depends_on = []
+
+# Step 2: Send a deployment notification with variables
+[deployment_notification]
+type = "Function"
+plugin = "slack"
+function = "send_message"
+function_params = {
+    text = "🚀 {{APP_NAME}} v{{VERSION}} deployment initiated",
+    channel = "#deployments",
+    username = "DeployBot",
+    icon_emoji = ":rocket:",
+    urgency = "high"
+}
+description = "Send deployment notification with variables"
+depends_on = ["basic_notification"]
+
+# Step 3: Send different urgency levels
+[low_priority_info]
+type = "Function"
+plugin = "slack"
+function = "send_message"
+function_params = {
+    text = "Routine maintenance scheduled for tonight",
+    channel = "#ops",
+    urgency = "low"
+}
+description = "Send low priority information"
+depends_on = ["deployment_notification"]
+
+[high_priority_alert]
+type = "Function"
+plugin = "slack"
+function = "send_message"
+function_params = {
+    text = "High CPU usage detected on production servers",
+    channel = "#alerts",
+    urgency = "high"
+}
+description = "Send high priority alert"
+depends_on = ["low_priority_info"]
+
+[critical_alert]
+type = "Function"
+plugin = "slack"
+function = "send_message"
+function_params = {
+    text = "Database connection lost! Immediate attention required!",
+    channel = "#critical-alerts",
+    urgency = "critical"
+}
+description = "Send critical alert"
+depends_on = ["high_priority_alert"]
+
+# Step 4: Completion notification
+[completion]
+type = "Function"
+plugin = "slack"
+function = "send_message"
+function_params = {
+    text = "✅ Basic notification workflow completed successfully",
+    channel = "#general",
+    urgency = "normal"
+}
+description = "Send completion notification"
+depends_on = ["critical_alert"]

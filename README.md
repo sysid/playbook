@@ -241,6 +241,9 @@ plugin_config = { webhook_url = "${SUCCESS_WEBHOOK}" }  # Node-specific override
 
 ### Plugin Development
 
+For an example plugin implementation, see the built-in Python plugin in `playbook/plugins/python_plugin.py` or
+the full-blown example in `playbook-slack-plugin`.
+
 #### When to Create a Plugin
 
 Create a separate plugin when you need:
