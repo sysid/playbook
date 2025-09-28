@@ -6,6 +6,16 @@
   <component name="ChangeListManager">
     <list default="true" id="5a384825-87f7-4752-bb95-dcf8d7a51e56" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/playbook/domain/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/playbook/domain/models.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/playbook/infrastructure/conditions.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/playbook/infrastructure/conditions.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/playbook/infrastructure/parser.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/playbook/infrastructure/parser.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_domain/test_plugin_type_conversion.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_domain/test_plugin_type_conversion.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_infrastructure/test_conditional_parsing.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_infrastructure/test_conditional_parsing.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_infrastructure/test_conditions.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_infrastructure/test_conditions.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_infrastructure/test_parser.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_infrastructure/test_parser.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_infrastructure/test_python_plugin.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_infrastructure/test_python_plugin.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_service/test_conditional_execution.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_service/test_conditional_execution.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -44,7 +54,7 @@
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.git.unshallow": "true",
     "SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "git-widget-placeholder": "main",
+    "git-widget-placeholder": "feat/sugar",
     "last_opened_file_path": "/Users/Q187392/dev/s/private/playbook",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
@@ -219,6 +229,7 @@
       <workItem from="1747493060514" duration="1480000" />
       <workItem from="1747585183236" duration="981000" />
       <workItem from="1758187886657" duration="17841000" />
+      <workItem from="1759076656935" duration="527000" />
     </task>
     <servers />
   </component>

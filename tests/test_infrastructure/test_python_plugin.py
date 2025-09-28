@@ -2,7 +2,6 @@
 """Tests for the Python plugin."""
 
 import pytest
-from unittest.mock import patch, Mock
 
 from src.playbook.infrastructure.plugins.python_plugin import PythonPlugin
 from src.playbook.domain.plugins import PluginExecutionError

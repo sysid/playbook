@@ -1,9 +1,8 @@
 # src/playbook/infrastructure/conditions.py
 """Conditional execution support for workflow nodes."""
 
-import re
 from typing import Dict, List, Any, Optional, Tuple
-from jinja2 import Environment, Template, BaseLoader
+from jinja2 import Environment, BaseLoader
 from ..domain.models import NodeExecution, NodeStatus
 
 
@@ -144,7 +143,7 @@ class ConditionEvaluator:
                     # Try to evaluate as Python expression for numbers/expressions
                     try:
                         return bool(eval(result_lower))
-                    except:
+                    except Exception:
                         # If all else fails, non-empty string is truthy
                         return bool(result_lower)
             else:

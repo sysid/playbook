@@ -1,9 +1,8 @@
 # tests/test_service/test_conditional_execution.py
 """Integration tests for conditional node execution."""
 
-import pytest
 from datetime import datetime
-from unittest.mock import Mock, MagicMock
+from unittest.mock import Mock
 
 from src.playbook.service.engine import RunbookEngine
 from src.playbook.domain.models import (

@@ -2,7 +2,6 @@
 """Tests for plugin parameter type conversion functionality."""
 
 import pytest
-from unittest.mock import Mock
 
 from src.playbook.domain.plugins import (
     Plugin,

@@ -3,7 +3,6 @@
 
 import pytest
 from datetime import datetime
-from typing import Dict
 
 from src.playbook.infrastructure.conditions import (
     ConditionalDependency,
