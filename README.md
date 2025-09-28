@@ -17,6 +17,7 @@ It supports manual approvals, shell commands, and Python functions as workflow s
 
 - **TOML-defined DAGs** with comprehensive workflow orchestration
 - **Variable support** with Jinja2 templating for dynamic, environment-aware workflows
+- **Simplified dependency syntax** with implicit linear dependencies and special keywords
 - **Conditional dependencies** with shorthand syntax and complex branching logic
 - **Plugin system** for extensible functionality with external packages
 - **Interactive retry functionality** with configurable retry limits and failure handling
@@ -79,10 +80,74 @@ created_at  = "2025-05-03T12:00:00Z"
 Each node is a separate TOML table. You define:
 
 - `type`: One of `"Manual"`, `"Command"`, `"Function"`
-- `depends_on`: List of upstream node IDs (empty for roots)
+- `depends_on`: Dependencies (see Dependency Syntax below)
 - `name`: (Optional) Display name
 - `description`: (Optional) Shown in CLI
 - Additional fields depend on node type.
+
+#### Dependency Syntax
+
+Playbook provides flexible dependency syntax to reduce verbosity for common patterns:
+
+**Implicit Linear Dependencies (Default)**
+When `depends_on` is omitted, nodes automatically depend on the previous node in declaration order:
+
+```toml
+[step1]
+type = "Command"
+command_name = "echo 'First step'"
+# depends_on = [] (implicit - first node has no dependencies)
+
+[step2]
+type = "Command"
+command_name = "echo 'Second step'"
+# depends_on = ["step1"] (implicit - depends on previous node)
+
+[step3]
+type = "Command"
+command_name = "echo 'Third step'"
+# depends_on = ["step2"] (implicit - depends on previous node)
+```
+
+**Simplified Single Dependencies**
+Use a string instead of a list for single dependencies:
+
+```toml
+[deploy]
+type = "Command"
+command_name = "deploy.sh"
+depends_on = "build"  # Same as depends_on = ["build"]
+```
+
+**Special Keywords**
+- `depends_on = "^"` - Depend on the previous node (explicit version of implicit behavior)
+- `depends_on = "*"` - Depend on all previous nodes
+
+```toml
+[step1]
+type = "Command"
+command_name = "echo 'Step 1'"
+
+[step2]
+type = "Command"
+command_name = "echo 'Step 2'"
+depends_on = "^"  # Explicit dependency on step1
+
+[final]
+type = "Command"
+command_name = "echo 'Final step'"
+depends_on = "*"  # Depends on both step1 and step2
+```
+
+**Traditional Explicit Dependencies**
+You can still specify explicit dependencies as before:
+
+```toml
+[complex_node]
+type = "Command"
+command_name = "complex.sh"
+depends_on = ["step1", "step3", "other_node"]  # Multiple explicit dependencies
+```
 
 #### Manual Node
 

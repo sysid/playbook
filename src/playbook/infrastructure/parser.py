@@ -161,15 +161,13 @@ class RunbookParser:
             if field not in metadata:
                 raise ValueError(f"Missing required field in [runbook]: {field}")
 
-        # Create nodes
+        # Create nodes with implicit dependency support
         nodes: Dict[str, Union[ManualNode, FunctionNode, CommandNode]] = {}
-        for node_id, node in nodes.items():
-            if node.critical and node.skip:
-                raise ValueError(
-                    f"Skipping critical node not allowed: {node_id}: {node.skip}"
-                )
 
-        for node_id, node_data in data.items():
+        # Track node declaration order for implicit dependencies
+        node_ids_in_order = list(data.keys())
+
+        for i, (node_id, node_data) in enumerate(data.items()):
             if "type" not in node_data:
                 raise ValueError(f"Missing required field 'type' in node: {node_id}")
 
@@ -177,6 +175,44 @@ class RunbookParser:
             node_data["id"] = node_id
             if "name" not in node_data:
                 node_data["name"] = node_id
+
+            # Handle implicit dependencies and special keywords
+            if "depends_on" not in node_data:
+                # Implicit linear dependency: depend on previous node
+                if i > 0:
+                    previous_node_id = node_ids_in_order[i - 1]
+                    node_data["depends_on"] = [previous_node_id]
+                else:
+                    node_data["depends_on"] = []
+            else:
+                # Process special keywords and normalize depends_on
+                depends_on = node_data["depends_on"]
+                if isinstance(depends_on, str):
+                    if depends_on == "^":
+                        # Depend on previous node
+                        if i > 0:
+                            previous_node_id = node_ids_in_order[i - 1]
+                            node_data["depends_on"] = [previous_node_id]
+                        else:
+                            node_data["depends_on"] = []
+                    elif depends_on == "*":
+                        # Depend on all previous nodes
+                        node_data["depends_on"] = node_ids_in_order[:i]
+                    else:
+                        # Regular string dependency
+                        node_data["depends_on"] = [depends_on] if depends_on else []
+                elif isinstance(depends_on, list):
+                    # Process list, handling special keywords within
+                    processed_deps = []
+                    for dep in depends_on:
+                        if dep == "^":
+                            if i > 0:
+                                processed_deps.append(node_ids_in_order[i - 1])
+                        elif dep == "*":
+                            processed_deps.extend(node_ids_in_order[:i])
+                        else:
+                            processed_deps.append(dep)
+                    node_data["depends_on"] = processed_deps
 
             # Process conditional dependencies if present
             if "depends_on" in node_data:
@@ -227,6 +263,13 @@ class RunbookParser:
 
                 raise ValueError(
                     f"Error validating node '{node_id}': {'; '.join(error_messages)}"
+                )
+
+        # Validate critical nodes
+        for node_id, node in nodes.items():
+            if node.critical and node.skip:
+                raise ValueError(
+                    f"Skipping critical node not allowed: {node_id}: {node.skip}"
                 )
 
         return Runbook(

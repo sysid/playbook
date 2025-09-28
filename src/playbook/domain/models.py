@@ -3,7 +3,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Dict, List, Optional, Union, Literal, Any
 
-from pydantic import BaseModel, Field, RootModel, field_validator
+from pydantic import BaseModel, Field, RootModel, field_validator, model_validator
 
 
 class NodeType(str, Enum):
@@ -35,7 +35,7 @@ class TriggerType(str, Enum):
 class BaseNode(BaseModel):
     id: str
     type: NodeType
-    depends_on: List[str] = Field(default_factory=list)
+    depends_on: Union[str, List[str]] = Field(default_factory=lambda: [])
     critical: bool = False
     name: Optional[str] = None
     description: Optional[str] = None
@@ -43,6 +43,16 @@ class BaseNode(BaseModel):
     prompt_after: str = "Continue with the next step?"  # "" for no prompt
     skip: bool = False
     when: str = "true"  # Conditional execution clause, defaults to always execute
+
+    @model_validator(mode='before')
+    @classmethod
+    def normalize_depends_on(cls, values: Any) -> Any:
+        """Normalize depends_on to always be a list internally."""
+        if isinstance(values, dict) and 'depends_on' in values:
+            depends_on = values['depends_on']
+            if isinstance(depends_on, str):
+                values['depends_on'] = [depends_on] if depends_on else []
+        return values
 
 
 class ManualNode(BaseNode):
