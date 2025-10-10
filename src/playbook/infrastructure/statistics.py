@@ -57,7 +57,7 @@ class SQLiteStatisticsRepository(StatisticsRepository):
                 # Get latest run
                 latest_cursor = conn.execute(
                     """
-                    SELECT start_time, status
+                    SELECT run_id, start_time, status
                     FROM runs
                     WHERE workflow_name = ?
                     ORDER BY run_id DESC LIMIT 1
@@ -69,6 +69,7 @@ class SQLiteStatisticsRepository(StatisticsRepository):
                 result[workflow_name] = {
                     "total_runs": workflow["run_count"],
                     "status_counts": status_counts,
+                    "latest_run_id": latest["run_id"] if latest else None,
                     "latest_run": latest["start_time"] if latest else None,
                     "latest_status": latest["status"] if latest else None,
                 }

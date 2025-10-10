@@ -24,6 +24,8 @@ from ...domain.models import (
     TriggerType,
 )
 from ...domain.exceptions import ParseError, ExecutionError
+from ...infrastructure.parser import RunbookParser
+from ...service.engine import RunbookEngine
 
 
 def run(
@@ -51,7 +53,7 @@ def run(
         "--no-interactive-vars",
         help="Don't prompt for missing required variables",
     ),
-):
+) -> None:
     """Run a playbook from start to finish"""
     try:
         # Process variables
@@ -63,6 +65,9 @@ def run(
         _execute_workflow(
             parser, file, state_path, variables=variables, max_retries=max_retries
         )
+    except KeyboardInterrupt:
+        console.print("\n[yellow]Workflow interrupted by user (CTRL-C)[/yellow]")
+        raise typer.Exit(code=130)  # Standard exit code for CTRL-C
     except Exception as e:
         handle_error_and_exit(e, "Runbook execution", ctx.params.get("verbose", False))
 
@@ -70,7 +75,7 @@ def run(
 def resume(
     ctx: typer.Context,
     file: Path = typer.Argument(..., help="Runbook file path"),
-    run_id: int = typer.Argument(..., help="Run ID to resume"),
+    run_id: Optional[int] = typer.Argument(None, help="Run ID to resume (defaults to latest aborted run)"),
     node_id: Optional[str] = typer.Option(
         None, "--node", help="Node ID to resume from"
     ),
@@ -96,7 +101,7 @@ def resume(
         "--no-interactive-vars",
         help="Don't prompt for missing required variables",
     ),
-):
+) -> None:
     """Resume a previously started run"""
     try:
         # Process variables
@@ -105,16 +110,59 @@ def resume(
         )
 
         parser = get_parser(interactive=not no_interactive_vars)
+
+        # If no run_id provided, find latest aborted run
+        if run_id is None:
+            run_id = _find_latest_resumable_run(file, state_path)
+            if run_id is None:
+                console.print("[bold red]No resumable (ABORTED) runs found for this workflow[/bold red]")
+                raise typer.Exit(code=1)
+            console.print(f"[bold blue]Resuming latest aborted run: {run_id}[/bold blue]")
+
         _execute_workflow(
             parser, file, state_path, run_id, node_id, max_retries, variables=variables
         )
+    except KeyboardInterrupt:
+        console.print("\n[yellow]Workflow interrupted by user (CTRL-C)[/yellow]")
+        raise typer.Exit(code=130)  # Standard exit code for CTRL-C
     except Exception as e:
         handle_error_and_exit(e, "Runbook resume", ctx.params.get("verbose", False))
 
 
+def _find_latest_resumable_run(file: Path, state_path: Optional[str] = None) -> Optional[int]:
+    """Find the latest ABORTED run for the given workflow."""
+    from ..common import get_engine
+    from ...infrastructure.parser import RunbookParser
+
+    # Parse runbook to get workflow name
+    parser = RunbookParser()
+    try:
+        runbook = parser.parse(str(file))
+    except Exception:
+        return None
+
+    # Get engine and query for ABORTED runs
+    engine = get_engine(state_path)
+
+    # Get all runs for this workflow
+    try:
+        runs = engine.run_repo.list_runs(runbook.title)
+    except Exception:
+        return None
+
+    # Filter for ABORTED runs and get the most recent
+    aborted_runs = [r for r in runs if r.status == RunStatus.ABORTED]
+    if not aborted_runs:
+        return None
+
+    # Sort by run_id (descending) to get latest
+    aborted_runs.sort(key=lambda r: r.run_id, reverse=True)
+    return aborted_runs[0].run_id
+
+
 def _collect_variables(
-    var: Optional[List[str]], vars_file: Optional[str], vars_env: str, interactive: bool
-) -> dict:
+    var: Optional[List[str]], vars_file: Optional[str], vars_env: Optional[str], interactive: bool
+) -> Dict[str, Any]:
     """Collect variables from all sources."""
     var_manager = get_variable_manager(interactive=interactive)
 
@@ -142,13 +190,13 @@ def _collect_variables(
 
 
 def _execute_workflow(
-    parser,
+    parser: RunbookParser,
     file: Path,
     state_path: Optional[str] = None,
     run_id: Optional[int] = None,
     start_node_id: Optional[str] = None,
     max_retries: int = 3,
-    variables: Optional[dict] = None,
+    variables: Optional[Dict[str, Any]] = None,
 ) -> None:
     """
     Shared workflow execution logic for both run and resume commands
@@ -209,21 +257,31 @@ def _execute_workflow(
         )
         return
 
-    # Execute the workflow
-    _execute_nodes(
-        engine,
-        runbook,
-        run_info,
-        nodes_to_run,
-        progress,
-        io_handler,
-        max_retries,
-        variables,
-    )
+    # Execute the workflow with interruption handling
+    try:
+        _execute_nodes(
+            engine,
+            runbook,
+            run_info,
+            nodes_to_run,
+            progress,
+            io_handler,
+            max_retries,
+            variables,
+        )
+    except KeyboardInterrupt:
+        # Mark run as aborted on CTRL-C
+        run_info.status = RunStatus.ABORTED
+        engine.run_repo.update_run(run_info)
+        console.print(
+            f"\n[bold yellow]Run ID {run_info.run_id} has been marked as ABORTED and can be resumed with:[/bold yellow]"
+        )
+        console.print(f"  playbook resume {file} {run_info.run_id}")
+        raise  # Re-raise to be caught by outer handler
 
 
 def _determine_nodes_to_run(
-    engine,
+    engine: RunbookEngine,
     runbook: Runbook,
     run_info: RunInfo,
     order: List[str],
@@ -271,14 +329,14 @@ def _determine_nodes_to_run(
 
 
 def _execute_nodes(
-    engine,
+    engine: RunbookEngine,
     runbook: Runbook,
     run_info: RunInfo,
     nodes_to_run: List[str],
     progress: Progress,
     io_handler: ConsoleNodeIOHandler,
     max_retries: int = 3,
-    variables: Optional[dict] = None,
+    variables: Optional[Dict[str, Any]] = None,
 ) -> None:
     """
     Execute the given nodes in the runbook

@@ -279,9 +279,13 @@ class RunbookEngine:
         # Get existing run
         run_info = self.run_repo.get_run(runbook.title, run_id)
 
-        # Verify run can be resumed (not OK or NOK)
-        if run_info.status not in [RunStatus.RUNNING, RunStatus.ABORTED]:
-            raise ValueError(f"Cannot resume run with status {run_info.status}")
+        # Only aborted workflows can be resumed
+        if run_info.status != RunStatus.ABORTED:
+            raise ValueError(
+                f"Cannot resume run with status '{run_info.status}'. "
+                f"Only ABORTED workflows can be resumed. "
+                f"NOK workflows require a new run."
+            )
 
         # Update run status
         run_info.status = RunStatus.RUNNING

@@ -10,6 +10,59 @@ A playbook is a workflow engine that executes runbooks defined as TOML-based DAG
 1. **Runbook metadata** - Basic information about the workflow
 2. **Nodes** - Individual workflow steps with dependencies
 
+## Simplified Dependency Syntax (Preferred)
+
+**IMPORTANT**: Playbook now supports simplified dependency syntax that should be **preferred by default**:
+
+### The Simplest Form (Default for Linear Workflows)
+For simple sequential workflows, **omit `depends_on` entirely**. Nodes automatically depend on the previous node in declaration order:
+
+```toml
+[install]
+type = "Command"
+command_name = "npm install"
+# No depends_on needed - first node
+
+[test]
+type = "Command"
+command_name = "npm test"
+# No depends_on needed - automatically depends on install
+
+[build]
+type = "Command"
+command_name = "npm run build"
+# No depends_on needed - automatically depends on test
+```
+
+### When to Use Explicit Dependencies
+Only add explicit `depends_on` when you need:
+
+1. **Single explicit dependency** (when you need to skip implicit ordering):
+   ```toml
+   depends_on = "specific_node"  # Single string (not array)
+   ```
+
+2. **Previous node reference**:
+   ```toml
+   depends_on = "^"  # Explicitly depend on the previous node
+   ```
+
+3. **All previous nodes**:
+   ```toml
+   depends_on = "*"  # Depend on ALL previous nodes (merge point)
+   ```
+
+4. **Multiple specific dependencies** (parallel workflow merge points):
+   ```toml
+   depends_on = ["node1", "node2"]  # Array only when truly needed
+   ```
+
+### Syntax Priority (Use in This Order)
+1. ✅ **PREFERRED**: Omit `depends_on` for linear sequential steps
+2. ✅ **SIMPLE**: `depends_on = "node_id"` for single explicit dependency
+3. ✅ **SPECIAL**: `depends_on = "^"` or `depends_on = "*"` for patterns
+4. ⚠️ **ONLY WHEN NEEDED**: `depends_on = ["node1", "node2"]` for complex DAGs
+
 ## Required TOML Structure
 
 ### 1. Runbook Section (Required)
@@ -35,7 +88,7 @@ For human approval/interaction steps:
 type = "Manual"
 description = "What this manual step accomplishes"
 prompt_after = "Question or prompt for the operator?"
-depends_on = ["previous_node_id"]
+# depends_on - OPTIONAL: Omit for sequential workflow, or use "node_id", "^", "*", or ["node1", "node2"]
 timeout = 300  # Optional: timeout in seconds (default: 300)
 critical = false  # Optional: if true, failure stops workflow
 skip = false  # Optional: if true, node is skipped
@@ -48,7 +101,7 @@ For shell command execution:
 type = "Command"
 description = "What this command accomplishes"
 command_name = "echo 'Hello World'"
-depends_on = ["previous_node_id"]
+# depends_on - OPTIONAL: Omit for sequential workflow, or use "node_id", "^", "*", or ["node1", "node2"]
 interactive = false  # Optional: if true, allows interactive input
 timeout = 300  # Optional: timeout in seconds (default: 300)
 critical = false  # Optional: if true, failure stops workflow
@@ -64,7 +117,7 @@ description = "What this function accomplishes"
 plugin = "plugin_name"  # e.g., "python" for built-in Python utilities
 function = "function_name"  # e.g., "notify", "sleep", "throw"
 function_params = { "param1" = "value1", "param2" = 42 }
-depends_on = ["previous_node_id"]
+# depends_on - OPTIONAL: Omit for sequential workflow, or use "node_id", "^", "*", or ["node1", "node2"]
 critical = false  # Optional: if true, failure stops workflow
 skip = false  # Optional: if true, node is skipped
 ```
@@ -152,22 +205,27 @@ when = "{{ ENVIRONMENT in ['staging', 'prod'] }}"
 
 ### Best Practices
 1. **Naming**: Use descriptive node IDs that reflect the step purpose
-2. **Dependencies**: Organize nodes to create clear execution flow
-3. **Descriptions**: Write comprehensive, multi-line descriptions that explain:
+2. **Simplified Dependencies (PREFERRED)**: For linear workflows, omit `depends_on` entirely to leverage implicit dependencies
+3. **Explicit Dependencies (only when needed)**: Add `depends_on` only for:
+   - Breaking from linear flow for parallel execution
+   - Merge points that wait on multiple branches
+   - Special patterns using `"^"` (previous) or `"*"` (all previous)
+   - When using, prefer single strings over arrays: `depends_on = "node_id"` not `depends_on = ["node_id"]`
+4. **Descriptions**: Write comprehensive, multi-line descriptions that explain:
    - What the step accomplishes
    - Why it's necessary in the workflow
    - Important context or considerations
    - Expected outcomes or side effects
-4. **Runbook descriptions**: Use multi-line format to clearly explain:
+5. **Runbook descriptions**: Use multi-line format to clearly explain:
    - The workflow's primary purpose and scope
    - What business or operational problem it solves
    - Key phases or stages of execution
    - Expected outcomes and success criteria
-5. **Parallelization**: Nodes with same dependencies can run in parallel
-6. **Critical paths**: Mark essential steps as `critical = true`
-7. **Timeouts**: Set appropriate timeouts for long-running operations
-8. **Variables**: Use variables for configuration and environment-specific values
-9. **Conditional logic**: Leverage conditional dependencies for complex workflows
+6. **Parallelization**: Nodes with same dependencies can run in parallel
+7. **Critical paths**: Mark essential steps as `critical = true`
+8. **Timeouts**: Set appropriate timeouts for long-running operations
+9. **Variables**: Use variables for configuration and environment-specific values
+10. **Conditional logic**: Leverage conditional dependencies for complex workflows
 
 ## Example Workflows
 
@@ -192,7 +250,6 @@ This checkpoint ensures backup timing is appropriate and no critical
 operations are currently running that might interfere with backup integrity.
 """
 prompt_after = "Ready to start database backup?"
-depends_on = []
 
 [create_backup]
 type = "Command"
@@ -202,7 +259,6 @@ This step generates a SQL dump file containing all database schema,
 data, and necessary restore information for disaster recovery purposes.
 """
 command_name = "pg_dump -h localhost -U postgres mydb > backup.sql"
-depends_on = ["start_backup"]
 timeout = 1800
 
 [verify_backup]
@@ -213,7 +269,6 @@ This validation step checks file existence, size, and basic content structure
 to ensure the backup can be relied upon for restoration if needed.
 """
 command_name = "ls -la backup.sql && wc -l backup.sql"
-depends_on = ["create_backup"]
 
 [notify_completion]
 type = "Function"
@@ -225,7 +280,6 @@ enables rapid response if any issues were detected during the process.
 plugin = "python"
 function = "notify"
 function_params = { "message" = "Database backup completed successfully" }
-depends_on = ["verify_backup"]
 ```
 
 ### Parallel Workflow with Merge
@@ -249,7 +303,6 @@ This step ensures proper authorization, timing, and readiness assessment
 before making changes that will affect live user traffic and services.
 """
 prompt_after = "Approve deployment to production?"
-depends_on = []
 
 [deploy_app]
 type = "Command"
@@ -259,7 +312,6 @@ This step applies the deployment manifests, triggers rolling updates,
 and ensures the new version is properly scheduled and running.
 """
 command_name = "kubectl apply -f deployment.yaml"
-depends_on = ["deploy_start"]
 
 [check_app_health]
 type = "Command"
@@ -269,7 +321,6 @@ This validation ensures the application is properly initialized, responding
 to requests, and ready to handle production traffic.
 """
 command_name = "curl -f http://app.example.com/health"
-depends_on = ["deploy_app"]
 
 [check_database_connectivity]
 type = "Command"
@@ -279,7 +330,7 @@ This test ensures network policies, credentials, and database availability
 are working correctly for the new application version.
 """
 command_name = "kubectl exec deployment/app -- nc -z database 5432"
-depends_on = ["deploy_app"]
+depends_on = "deploy_app"  # Explicit dependency to run parallel with check_app_health
 
 [final_verification]
 type = "Manual"
@@ -289,7 +340,7 @@ This checkpoint allows review of all automated checks and confirmation
 that the deployment meets quality and operational standards.
 """
 prompt_after = "All checks passed. Confirm deployment success?"
-depends_on = ["check_app_health", "check_database_connectivity"]
+depends_on = ["check_app_health", "check_database_connectivity"]  # Merge point - wait for both
 ```
 
 ### Advanced Workflow with Variables and Conditionals
@@ -319,7 +370,6 @@ This foundational step ensures consistent, reproducible builds across
 all environments while preparing deployable packages.
 """
 command_name = "npm run build"
-depends_on = []
 
 [run_tests]
 type = "Command"
@@ -329,7 +379,6 @@ This validation step ensures code quality and functionality before
 deployment, but can be skipped for emergency deployments if needed.
 """
 command_name = "npm test"
-depends_on = ["build_application"]
 when = "{{ not SKIP_TESTS }}"
 
 [security_scan]
@@ -340,7 +389,7 @@ This critical security validation is mandatory for production
 environments to ensure compliance and risk management.
 """
 command_name = "npm audit --audit-level high"
-depends_on = ["build_application"]
+depends_on = "build_application"  # Explicit - runs parallel with run_tests
 when = "{{ ENVIRONMENT == 'prod' }}"
 
 [deploy_application]
@@ -351,7 +400,7 @@ This step handles environment-specific deployment configurations,
 secrets management, and service updates.
 """
 command_name = "deploy.sh {{ENVIRONMENT}} --app={{APP_NAME}}"
-depends_on = ["build_application"]
+depends_on = "*"  # Wait for all previous nodes (build, tests, security scan)
 when = "{{ (SKIP_TESTS or has_succeeded('run_tests')) and (ENVIRONMENT != 'prod' or has_succeeded('security_scan')) }}"
 
 [health_check]
@@ -362,7 +411,6 @@ This validation ensures the deployed application is operational
 and ready to serve traffic in the target environment.
 """
 command_name = "curl -f https://{{APP_NAME}}-{{ENVIRONMENT}}.company.com/health"
-depends_on = ["deploy_application"]
 when = "{{ has_succeeded('deploy_application') }}"
 
 [rollback_deployment]
@@ -373,7 +421,6 @@ This safety mechanism restores the previous stable version
 to minimize service disruption and user impact.
 """
 command_name = "rollback.sh {{ENVIRONMENT}}"
-depends_on = ["health_check"]
 when = "{{ ENABLE_ROLLBACK and has_failed('health_check') }}"
 
 [notify_success]
@@ -386,7 +433,7 @@ and maintains operational awareness across teams.
 plugin = "python"
 function = "notify"
 function_params = { "message" = "✅ {{APP_NAME}} deployed successfully to {{ENVIRONMENT}}" }
-depends_on = ["health_check"]
+depends_on = "health_check"  # Explicit - runs parallel with rollback_deployment
 when = "{{ has_succeeded('health_check') }}"
 
 [notify_failure]
@@ -399,7 +446,7 @@ and ensures rapid remediation of deployment issues.
 plugin = "python"
 function = "notify"
 function_params = { "message" = "❌ {{APP_NAME}} deployment to {{ENVIRONMENT}} failed. Rollback: {{ 'completed' if has_succeeded('rollback_deployment') else 'disabled' }}" }
-depends_on = ["health_check", "rollback_deployment"]
+depends_on = ["health_check", "rollback_deployment"]  # Array needed - merge point
 when = "{{ has_failed('health_check') }}"
 ```
 
@@ -440,13 +487,14 @@ When generating a playbook:
    - Expected outcomes or side effects
    - Use multi-line format for comprehensive documentation
 
-6. **Establish dependencies and conditional logic**:
-   - Start nodes have `depends_on = []`
-   - Sequential steps depend on the previous step
-   - Parallel steps can depend on the same parent
-   - Merge steps depend on multiple parallel parents
-   - Use conditional dependencies (`node:success`, `node:failure`) when appropriate
-   - Apply `when` conditions for complex branching logic
+6. **Establish dependencies using the simplest syntax**:
+   - **DEFAULT**: Omit `depends_on` entirely for sequential steps (implicit linear dependencies)
+   - **Parallel branches**: Add explicit `depends_on = "parent_node"` only where needed to break from linear flow
+   - **Merge points**: Use `depends_on = ["node1", "node2"]` only for nodes that wait on multiple parents
+   - **Special patterns**: Use `depends_on = "*"` to wait for all previous nodes
+   - **Conditional dependencies**: Use (`node:success`, `node:failure`) when appropriate
+   - **Complex branching**: Apply `when` conditions for environment or state-based logic
+   - **Remember**: Less is more - only add `depends_on` when the implicit linear flow doesn't match your needs
 
 7. **Set appropriate attributes**:
    - Mark critical steps with `critical = true`
