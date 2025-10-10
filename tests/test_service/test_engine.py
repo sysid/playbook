@@ -766,18 +766,7 @@ class TestRunbookEngine:
     def test_resume_run_whenRunStatusNotResumable_thenRaisesValueError(
         self, engine, mock_dependencies
     ):
-        """Test that resume_run validates run status before resuming"""
-        # Arrange
-        existing_run = RunInfo(
-            workflow_name="Test Workflow",
-            run_id=123,
-            start_time=datetime.now(timezone.utc),
-            status=RunStatus.OK,  # Completed run - can't resume
-            trigger=TriggerType.RUN,
-        )
-
-        mock_dependencies["run_repo"].get_run.return_value = existing_run
-
+        """Test that resume_run only allows ABORTED status, rejects OK, NOK, and RUNNING"""
         runbook = Runbook(
             title="Test Workflow",
             description="Test Description",
@@ -787,8 +776,31 @@ class TestRunbookEngine:
             nodes={},
         )
 
-        # Act & Assert
-        with pytest.raises(ValueError, match="Cannot resume run with status"):
+        # Test OK status - can't resume
+        existing_run = RunInfo(
+            workflow_name="Test Workflow",
+            run_id=123,
+            start_time=datetime.now(timezone.utc),
+            status=RunStatus.OK,
+            trigger=TriggerType.RUN,
+        )
+        mock_dependencies["run_repo"].get_run.return_value = existing_run
+
+        with pytest.raises(ValueError, match="Only ABORTED workflows can be resumed"):
+            engine.resume_run(runbook, 123)
+
+        # Test NOK status - can't resume
+        existing_run.status = RunStatus.NOK
+        mock_dependencies["run_repo"].get_run.return_value = existing_run
+
+        with pytest.raises(ValueError, match="Only ABORTED workflows can be resumed"):
+            engine.resume_run(runbook, 123)
+
+        # Test RUNNING status - can't resume
+        existing_run.status = RunStatus.RUNNING
+        mock_dependencies["run_repo"].get_run.return_value = existing_run
+
+        with pytest.raises(ValueError, match="Only ABORTED workflows can be resumed"):
             engine.resume_run(runbook, 123)
 
     def test_resume_node_execution_whenManualNode_thenExecutesManualNode(

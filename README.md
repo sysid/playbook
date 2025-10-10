@@ -511,6 +511,58 @@ critical = false  # Can be skipped if it fails
 depends_on = ["critical_deployment"]
 ```
 
+## 🔄 Workflow State and Resume Behavior
+
+### Workflow States
+
+Workflows can be in one of four states:
+
+| State | Description |
+|-------|-------------|
+| **RUNNING** | Workflow is currently executing |
+| **OK** | Workflow completed successfully |
+| **NOK** | Workflow failed (critical node failure or all retries exhausted) |
+| **ABORTED** | Workflow was interrupted or aborted by user |
+
+### Resume Behavior
+
+**Only ABORTED workflows can be resumed.** Other states require different actions:
+
+| Scenario | Resulting State | Can Resume? | Action Required |
+|----------|-----------------|-------------|-----------------|
+| **CTRL-C during execution** | ABORTED | ✅ Yes | `playbook resume <file> [<run_id>]` |
+| **User selects "Abort" on failure** | ABORTED | ✅ Yes | `playbook resume <file> [<run_id>]` |
+| **Critical node failure** | NOK | ❌ No | Start new run with `playbook run <file>` |
+| **Max retries exhausted** | NOK | ❌ No | Start new run with `playbook run <file>` |
+| **Workflow completes successfully** | OK | ❌ No | N/A - workflow is complete |
+| **Process killed (SIGKILL)** | RUNNING | ❌ No | Orphaned - requires manual intervention* |
+| **Computer reboot/crash** | RUNNING | ❌ No | Orphaned - requires manual intervention* |
+
+\* **Orphaned workflows:** External kills leave workflows in RUNNING state. These cannot be resumed automatically.
+Options:
+1. Start a new run
+2. Use `playbook set-status <file> <run_id> ABORTED` to mark as aborted, then resume
+
+### Resuming Aborted Workflows
+
+When resuming an aborted workflow, execution continues from the point of interruption:
+
+```bash
+# Resume latest aborted run (auto-detects run_id)
+playbook resume workflow.playbook.toml
+
+# Resume specific run by ID
+playbook resume workflow.playbook.toml 42
+
+# Resume with updated variables
+playbook resume workflow.playbook.toml 42 --var VERSION=1.2.4
+
+# Resume with different retry configuration
+playbook resume workflow.playbook.toml 42 --max-retries 5
+```
+
+**Note:** Completed nodes are skipped on resume. Only failed, pending, or not-yet-executed nodes will run.
+
 ## ⚙️ Configuration Management
 
 Playbook features a flexible configuration system with environment-based settings:
@@ -627,10 +679,13 @@ playbook run path/to/runbook.playbook.toml --vars-file vars.toml --no-interactiv
 playbook run path/to/runbook.playbook.toml --state-path /custom/path/run.db
 ```
 
-### Resume a failed workflow
+### Resume an aborted workflow
 
 ```bash
-# Resume with same variables as original run
+# Resume latest aborted run (auto-detects run_id)
+playbook resume path/to/runbook.playbook.toml
+
+# Resume specific aborted run by ID
 playbook resume path/to/runbook.playbook.toml 42
 
 # Resume with updated variables and retry configuration
@@ -639,6 +694,28 @@ playbook resume path/to/runbook.playbook.toml 42 --var VERSION=1.2.4 --max-retri
 # Resume with variable file
 playbook resume path/to/runbook.playbook.toml 42 --vars-file updated-vars.toml
 ```
+
+**Note:** Only ABORTED workflows can be resumed. NOK (failed) workflows require a new run.
+
+### Manually set workflow status
+
+```bash
+# Fix orphaned workflow (RUNNING -> ABORTED after system crash/reboot)
+playbook set-status path/to/runbook.playbook.toml 42 ABORTED
+
+# Skip confirmation prompt
+playbook set-status path/to/runbook.playbook.toml 42 ABORTED --force
+
+# Custom database path
+playbook set-status path/to/runbook.playbook.toml 42 NOK --state-path /custom/run.db
+```
+
+**Use cases:**
+- Fix orphaned RUNNING workflows after system crash or reboot
+- Manually mark workflows as completed or failed
+- Reset workflow state for testing
+
+**Warning:** This command directly modifies workflow state in the database. Use with caution in production environments.
 
 ### View DAG visualization
 

@@ -44,14 +44,14 @@ class BaseNode(BaseModel):
     skip: bool = False
     when: str = "true"  # Conditional execution clause, defaults to always execute
 
-    @model_validator(mode='before')
+    @model_validator(mode="before")
     @classmethod
     def normalize_depends_on(cls, values: Any) -> Any:
         """Normalize depends_on to always be a list internally."""
-        if isinstance(values, dict) and 'depends_on' in values:
-            depends_on = values['depends_on']
+        if isinstance(values, dict) and "depends_on" in values:
+            depends_on = values["depends_on"]
             if isinstance(depends_on, str):
-                values['depends_on'] = [depends_on] if depends_on else []
+                values["depends_on"] = [depends_on] if depends_on else []
         return values
 
 
