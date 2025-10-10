@@ -75,7 +75,9 @@ def run(
 def resume(
     ctx: typer.Context,
     file: Path = typer.Argument(..., help="Runbook file path"),
-    run_id: Optional[int] = typer.Argument(None, help="Run ID to resume (defaults to latest aborted run)"),
+    run_id: Optional[int] = typer.Argument(
+        None, help="Run ID to resume (defaults to latest aborted run)"
+    ),
     node_id: Optional[str] = typer.Option(
         None, "--node", help="Node ID to resume from"
     ),
@@ -115,9 +117,13 @@ def resume(
         if run_id is None:
             run_id = _find_latest_resumable_run(file, state_path)
             if run_id is None:
-                console.print("[bold red]No resumable (ABORTED) runs found for this workflow[/bold red]")
+                console.print(
+                    "[bold red]No resumable (ABORTED) runs found for this workflow[/bold red]"
+                )
                 raise typer.Exit(code=1)
-            console.print(f"[bold blue]Resuming latest aborted run: {run_id}[/bold blue]")
+            console.print(
+                f"[bold blue]Resuming latest aborted run: {run_id}[/bold blue]"
+            )
 
         _execute_workflow(
             parser, file, state_path, run_id, node_id, max_retries, variables=variables
@@ -129,7 +135,9 @@ def resume(
         handle_error_and_exit(e, "Runbook resume", ctx.params.get("verbose", False))
 
 
-def _find_latest_resumable_run(file: Path, state_path: Optional[str] = None) -> Optional[int]:
+def _find_latest_resumable_run(
+    file: Path, state_path: Optional[str] = None
+) -> Optional[int]:
     """Find the latest ABORTED run for the given workflow."""
     from ..common import get_engine
     from ...infrastructure.parser import RunbookParser
@@ -161,7 +169,10 @@ def _find_latest_resumable_run(file: Path, state_path: Optional[str] = None) -> 
 
 
 def _collect_variables(
-    var: Optional[List[str]], vars_file: Optional[str], vars_env: Optional[str], interactive: bool
+    var: Optional[List[str]],
+    vars_file: Optional[str],
+    vars_env: Optional[str],
+    interactive: bool,
 ) -> Dict[str, Any]:
     """Collect variables from all sources."""
     var_manager = get_variable_manager(interactive=interactive)

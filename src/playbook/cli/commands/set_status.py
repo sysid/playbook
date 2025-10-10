@@ -17,7 +17,9 @@ def set_status(
     ctx: typer.Context,
     file: Path = typer.Argument(..., help="Runbook file path"),
     run_id: int = typer.Argument(..., help="Run ID to update"),
-    new_status: str = typer.Argument(..., help="New status (RUNNING, OK, NOK, ABORTED)"),
+    new_status: str = typer.Argument(
+        ..., help="New status (RUNNING, OK, NOK, ABORTED)"
+    ),
     state_path: Optional[str] = typer.Option(
         None, "--state-path", help="State database path"
     ),
@@ -95,7 +97,9 @@ def set_status(
 
         # Safety checks
         if current_status == new_status_enum:
-            console.print(f"\n[yellow]Status is already {new_status_enum.value.upper()}. No change needed.[/yellow]")
+            console.print(
+                f"\n[yellow]Status is already {new_status_enum.value.upper()}. No change needed.[/yellow]"
+            )
             return
 
         warnings = []
@@ -129,7 +133,7 @@ def set_status(
             confirmed = Confirm.ask(
                 f"Set status of {workflow_name}#{run_id} from "
                 f"{current_status.value.upper()} to {new_status_enum.value.upper()}?",
-                default=False
+                default=False,
             )
 
             if not confirmed:

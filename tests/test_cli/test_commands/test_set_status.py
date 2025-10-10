@@ -15,7 +15,12 @@ class TestSetStatusCommand:
     @patch("playbook.cli.commands.set_status.get_engine")
     @patch("playbook.cli.commands.set_status.Confirm.ask")
     def test_set_status_when_valid_then_updates_status(
-        self, mock_confirm, mock_get_engine, mock_parser_class, cli_runner, temp_toml_file
+        self,
+        mock_confirm,
+        mock_get_engine,
+        mock_parser_class,
+        cli_runner,
+        temp_toml_file,
     ):
         """Test successful status update."""
         # Mock parser
@@ -40,9 +45,7 @@ class TestSetStatusCommand:
         # Mock confirmation
         mock_confirm.return_value = True
 
-        result = cli_runner.invoke(
-            app, ["set-status", temp_toml_file, "42", "aborted"]
-        )
+        result = cli_runner.invoke(app, ["set-status", temp_toml_file, "42", "aborted"])
 
         assert result.exit_code == 0
         assert "Status updated to ABORTED" in result.output
@@ -102,7 +105,12 @@ class TestSetStatusCommand:
     @patch("playbook.cli.commands.set_status.get_engine")
     @patch("playbook.cli.commands.set_status.Confirm.ask")
     def test_set_status_when_terminal_to_nonterminal_then_warns(
-        self, mock_confirm, mock_get_engine, mock_parser_class, cli_runner, temp_toml_file
+        self,
+        mock_confirm,
+        mock_get_engine,
+        mock_parser_class,
+        cli_runner,
+        temp_toml_file,
     ):
         """Test warning when changing from terminal to non-terminal state."""
         # Mock parser
@@ -127,9 +135,7 @@ class TestSetStatusCommand:
         # Mock confirmation
         mock_confirm.return_value = True
 
-        result = cli_runner.invoke(
-            app, ["set-status", temp_toml_file, "42", "running"]
-        )
+        result = cli_runner.invoke(app, ["set-status", temp_toml_file, "42", "running"])
 
         assert result.exit_code == 0
         assert "⚠️" in result.output
@@ -172,7 +178,12 @@ class TestSetStatusCommand:
     @patch("playbook.cli.commands.set_status.get_engine")
     @patch("playbook.cli.commands.set_status.Confirm.ask")
     def test_set_status_case_insensitive(
-        self, mock_confirm, mock_get_engine, mock_parser_class, cli_runner, temp_toml_file
+        self,
+        mock_confirm,
+        mock_get_engine,
+        mock_parser_class,
+        cli_runner,
+        temp_toml_file,
     ):
         """Test case-insensitive status handling."""
         # Mock parser
@@ -209,7 +220,12 @@ class TestSetStatusCommand:
     @patch("playbook.cli.commands.set_status.get_engine")
     @patch("playbook.cli.commands.set_status.Confirm.ask")
     def test_set_status_when_user_cancels_then_exits(
-        self, mock_confirm, mock_get_engine, mock_parser_class, cli_runner, temp_toml_file
+        self,
+        mock_confirm,
+        mock_get_engine,
+        mock_parser_class,
+        cli_runner,
+        temp_toml_file,
     ):
         """Test user canceling the operation."""
         # Mock parser
@@ -234,9 +250,7 @@ class TestSetStatusCommand:
         # Mock confirmation to return False
         mock_confirm.return_value = False
 
-        result = cli_runner.invoke(
-            app, ["set-status", temp_toml_file, "42", "aborted"]
-        )
+        result = cli_runner.invoke(app, ["set-status", temp_toml_file, "42", "aborted"])
 
         # User cancellation is not an error, but we exit gracefully
         assert result.exit_code in [0, 1]  # Typer may return 0 or 1 for graceful exit
@@ -268,9 +282,7 @@ class TestSetStatusCommand:
         mock_engine.run_repo.get_run.return_value = run_info
         mock_get_engine.return_value = mock_engine
 
-        result = cli_runner.invoke(
-            app, ["set-status", temp_toml_file, "42", "aborted"]
-        )
+        result = cli_runner.invoke(app, ["set-status", temp_toml_file, "42", "aborted"])
 
         assert result.exit_code == 0
         assert "Status is already ABORTED" in result.output
@@ -281,7 +293,12 @@ class TestSetStatusCommand:
     @patch("playbook.cli.commands.set_status.get_engine")
     @patch("playbook.cli.commands.set_status.Confirm.ask")
     def test_set_status_when_aborted_then_shows_resume_hint(
-        self, mock_confirm, mock_get_engine, mock_parser_class, cli_runner, temp_toml_file
+        self,
+        mock_confirm,
+        mock_get_engine,
+        mock_parser_class,
+        cli_runner,
+        temp_toml_file,
     ):
         """Test helpful hint after setting to ABORTED."""
         # Mock parser
@@ -306,9 +323,7 @@ class TestSetStatusCommand:
         # Mock confirmation
         mock_confirm.return_value = True
 
-        result = cli_runner.invoke(
-            app, ["set-status", temp_toml_file, "42", "aborted"]
-        )
+        result = cli_runner.invoke(app, ["set-status", temp_toml_file, "42", "aborted"])
 
         assert result.exit_code == 0
         assert "playbook resume" in result.output

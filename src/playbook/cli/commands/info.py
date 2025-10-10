@@ -62,7 +62,9 @@ def info(
                 "Latest Run",
             )
 
-            for workflow_name, stats in sorted(workflow_stats.items(), key=lambda x: x[0].lower()):
+            for workflow_name, stats in sorted(
+                workflow_stats.items(), key=lambda x: x[0].lower()
+            ):
                 status_counts = stats["status_counts"]
                 ok_count = status_counts.get("ok", 0)
                 nok_count = status_counts.get("nok", 0)
@@ -76,7 +78,9 @@ def info(
                     str(nok_count),
                     str(running_count),
                     str(aborted_count),
-                    str(stats["latest_run_id"]) if stats["latest_run_id"] is not None else "N/A",
+                    str(stats["latest_run_id"])
+                    if stats["latest_run_id"] is not None
+                    else "N/A",
                     stats["latest_run"] or "N/A",
                 )
 
