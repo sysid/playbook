@@ -30,7 +30,8 @@ class LegacyRunbookMigrator:
         nodes = {
             node_id: node for node_id, node in data.items() if isinstance(node, dict)
         }
-        order, referenced = self._execution_order(nodes)
+        order = self._execution_order(nodes)
+        self._reject_manual_nodes_without_instructions(order, nodes)
 
         document = tomlkit.document()
         document.add("schema_version", tomlkit.item(2))
@@ -50,7 +51,7 @@ class LegacyRunbookMigrator:
 
         steps = tomlkit.aot()
         for node_id in order:
-            steps.append(self._convert_node(node_id, nodes[node_id], referenced))
+            steps.append(self._convert_node(node_id, nodes[node_id]))
         document.add(tomlkit.nl())
         document.add("steps", steps)
         return tomlkit.dumps(document)
@@ -66,13 +67,34 @@ class LegacyRunbookMigrator:
         output.write_text(self.migrate(file_path))
         return output
 
+    @staticmethod
+    def _reject_manual_nodes_without_instructions(
+        order: list[str],
+        nodes: dict[str, dict[str, Any]],
+    ) -> None:
+        """Manual steps require instructions in v2; legacy descriptions were optional.
+
+        Reported together so the author fixes the legacy file in one pass.
+        """
+        missing = [
+            node_id
+            for node_id in order
+            if nodes[node_id].get("type") == "Manual"
+            and not nodes[node_id].get("description")
+        ]
+        if missing:
+            raise ValueError(
+                "manual steps require instructions in schema v2, but these legacy "
+                f"nodes have no description: {', '.join(missing)}. Add a description "
+                "to each of them in the legacy file and migrate again."
+            )
+
     def _execution_order(
         self,
         nodes: dict[str, dict[str, Any]],
-    ) -> tuple[list[str], set[str]]:
+    ) -> list[str]:
         declaration_order = list(nodes)
         dependencies: dict[str, list[str]] = {}
-        referenced: set[str] = set()
         for index, node_id in enumerate(declaration_order):
             raw_dependencies = nodes[node_id].get("depends_on")
             if raw_dependencies is None:
@@ -109,7 +131,6 @@ class LegacyRunbookMigrator:
                     f"step '{node_id}': unknown dependencies {', '.join(unknown)}"
                 )
             dependencies[node_id] = list(dict.fromkeys(expanded))
-            referenced.update(expanded)
 
         followers: dict[str, list[str]] = defaultdict(list)
         indegree = {
@@ -131,13 +152,12 @@ class LegacyRunbookMigrator:
                     ready.sort(key=declaration_order.index)
         if len(ordered) != len(nodes):
             raise ValueError("Legacy runbook contains a dependency cycle")
-        return ordered, referenced
+        return ordered
 
     def _convert_node(
         self,
         node_id: str,
         node: dict[str, Any],
-        referenced: set[str],
     ) -> Any:
         legacy_type = node.get("type")
         step = tomlkit.table()
@@ -155,10 +175,10 @@ class LegacyRunbookMigrator:
             step.add("name", name)
         if description := node.get("description"):
             step.add("instructions", description)
-        step.add(
-            "required",
-            bool(node.get("critical", False) or node_id in referenced),
-        )
+        # Legacy 'critical' was the only flag that made a node unskippable. Being
+        # the target of a depends_on says nothing about that, and with implicit
+        # linear dependencies it would mark almost every step required.
+        step.add("required", bool(node.get("critical", False)))
         if node.get("skip", False):
             step.add("enabled", False)
 
