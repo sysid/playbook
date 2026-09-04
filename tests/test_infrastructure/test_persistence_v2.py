@@ -93,3 +93,42 @@ def test_initialize_whenUnversionedDatabaseExists_thenRejectsIt(
 
     with pytest.raises(RuntimeError, match="fresh state database"):
         SQLiteRunRepository(str(database))
+
+
+def test_listWorkflows_whenSeveralWorkflows_thenSummarisesLatestRunPerWorkflow(
+    tmp_path: Path,
+) -> None:
+    repository = SQLiteRunRepository(str(tmp_path / "runs.db"))
+
+    def store(workflow: str, started: datetime, status: RunStatus) -> None:
+        repository.create_run(
+            RunInfo(
+                workflow_name=workflow,
+                run_id=0,
+                start_time=started,
+                status=status,
+                trigger=TriggerType.RUN,
+                source_path=f"/runbooks/{workflow}.playbook.toml",
+                definition_hash="abc123",
+            )
+        )
+
+    store("daily", datetime(2026, 1, 1, tzinfo=timezone.utc), RunStatus.OK)
+    store("daily", datetime(2026, 1, 3, tzinfo=timezone.utc), RunStatus.ABORTED)
+    store("deploy", datetime(2026, 1, 2, tzinfo=timezone.utc), RunStatus.OK)
+
+    summaries = repository.list_workflows()
+
+    assert [summary.workflow_name for summary in summaries] == ["daily", "deploy"]
+    daily, deploy = summaries
+    assert daily.run_count == 2
+    assert daily.last_status is RunStatus.ABORTED
+    assert daily.last_start_time == datetime(2026, 1, 3, tzinfo=timezone.utc)
+    assert deploy.run_count == 1
+    assert deploy.last_status is RunStatus.OK
+
+
+def test_listWorkflows_whenDatabaseIsEmpty_thenReturnsNothing(tmp_path: Path) -> None:
+    repository = SQLiteRunRepository(str(tmp_path / "runs.db"))
+
+    assert repository.list_workflows() == []

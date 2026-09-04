@@ -5,7 +5,14 @@ import sqlite3
 from datetime import datetime
 from pathlib import Path
 
-from ..domain.models import NodeExecution, NodeStatus, RunInfo, RunStatus, TriggerType
+from ..domain.models import (
+    NodeExecution,
+    NodeStatus,
+    RunInfo,
+    RunStatus,
+    TriggerType,
+    WorkflowSummary,
+)
 from ..domain.ports import NodeExecutionRepository, RunRepository
 
 
@@ -194,6 +201,41 @@ class SQLiteRunRepository(SQLiteRepository, RunRepository):
                 (workflow_name,),
             ).fetchall()
         return [self._run_from_row(row) for row in rows]
+
+    def list_workflows(self) -> list[WorkflowSummary]:
+        # The join picks the latest run per workflow explicitly rather than
+        # relying on SQLite's bare-column-with-MAX behaviour.
+        with self._connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT
+                    runs.workflow_name,
+                    latest.run_count,
+                    runs.start_time,
+                    runs.status
+                FROM runs
+                JOIN (
+                    SELECT
+                        workflow_name,
+                        COUNT(*) AS run_count,
+                        MAX(run_id) AS last_run_id
+                    FROM runs
+                    GROUP BY workflow_name
+                ) AS latest
+                  ON latest.workflow_name = runs.workflow_name
+                 AND latest.last_run_id = runs.run_id
+                ORDER BY runs.start_time DESC, runs.workflow_name ASC
+                """
+            ).fetchall()
+        return [
+            WorkflowSummary(
+                workflow_name=row["workflow_name"],
+                run_count=row["run_count"],
+                last_start_time=self._required_datetime(row["start_time"]),
+                last_status=RunStatus(row["status"]),
+            )
+            for row in rows
+        ]
 
     def _run_from_row(self, row: sqlite3.Row) -> RunInfo:
         return RunInfo(

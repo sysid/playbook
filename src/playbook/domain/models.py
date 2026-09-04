@@ -204,3 +204,12 @@ class RunInfo(BaseModel):
     source_path: str
     definition_hash: str
     variables: dict[str, Any] = Field(default_factory=dict)
+
+
+class WorkflowSummary(BaseModel):
+    """One workflow's run history, condensed for the overview listing."""
+
+    workflow_name: str
+    run_count: int
+    last_start_time: datetime
+    last_status: RunStatus

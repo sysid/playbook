@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Protocol
 
-from .models import NodeExecution, RunInfo, Runbook, Step
+from .models import NodeExecution, RunInfo, Runbook, Step, WorkflowSummary
 
 
 class Clock(Protocol):
@@ -31,6 +31,9 @@ class RunRepository(Protocol):
 
     def list_runs(self, workflow_name: str) -> list[RunInfo]:
         """Return all runs for a workflow."""
+
+    def list_workflows(self) -> list[WorkflowSummary]:
+        """Return one summary per workflow that has runs."""
 
 
 class NodeExecutionRepository(Protocol):

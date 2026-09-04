@@ -98,9 +98,16 @@ playbook create --output daily.playbook.toml
 playbook validate daily.playbook.toml
 playbook run daily.playbook.toml
 playbook resume daily.playbook.toml
+playbook show
 playbook show daily-checks
+playbook show daily-checks --run-id 3
 playbook migrate legacy.playbook.toml --output daily.playbook.toml
 ```
+
+`playbook show` without a workflow summarises every workflow in the state
+database: how many runs it has, and when and how the most recent one ended.
+Adding a workflow ID lists that workflow's runs; adding `--run-id` shows one
+run's step-by-step history.
 
 Use `--state-path` with `run`, `resume`, or `show` to override the default
 database at `~/.config/playbook/run.db`.

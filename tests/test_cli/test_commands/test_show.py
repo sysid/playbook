@@ -92,3 +92,47 @@ def test_show_reports_when_no_runs_exist(cli_runner, temp_dir):
 
     assert result.exit_code == 0
     assert "No runs found" in result.output
+
+
+def test_show_without_workflow_summarises_every_workflow(cli_runner, temp_dir):
+    database = temp_dir / "state.db"
+    runs = SQLiteRunRepository(str(database))
+    for workflow, status in (("daily", RunStatus.OK), ("deploy-ecs", RunStatus.ABORTED)):
+        runs.create_run(
+            RunInfo(
+                workflow_name=workflow,
+                run_id=0,
+                start_time=datetime.now(timezone.utc),
+                status=status,
+                trigger=TriggerType.RUN,
+                source_path=f"/runbooks/{workflow}.playbook.toml",
+                definition_hash="abc",
+            )
+        )
+
+    result = cli_runner.invoke(app, ["show", "--state-path", str(database)])
+
+    assert result.exit_code == 0
+    assert "daily" in result.output
+    assert "deploy-ecs" in result.output
+    assert "aborted" in result.output
+
+
+def test_show_without_workflow_reports_empty_state(cli_runner, temp_dir):
+    result = cli_runner.invoke(
+        app,
+        ["show", "--state-path", str(temp_dir / "state.db")],
+    )
+
+    assert result.exit_code == 0
+    assert "No workflows" in result.output
+
+
+def test_show_rejects_run_id_without_workflow(cli_runner, temp_dir):
+    result = cli_runner.invoke(
+        app,
+        ["show", "--run-id", "1", "--state-path", str(temp_dir / "state.db")],
+    )
+
+    assert result.exit_code != 0
+    assert "workflow" in result.output.lower()
