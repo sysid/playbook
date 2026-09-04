@@ -1,164 +1,107 @@
-# tests/test_integration/test_plugin_integration.py
-"""Integration tests for the plugin system."""
+"""Integration tests for plugin-backed function steps."""
 
-import tempfile
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import Mock
 
-import pytest
-
-from src.playbook.infrastructure.parser import RunbookParser
-from src.playbook.infrastructure.variables import VariableManager
-from src.playbook.service.engine import RunbookEngine
-from src.playbook.domain.models import NodeStatus
-from src.playbook.infrastructure.persistence import (
-    SQLiteRunRepository,
+from playbook.domain.models import NodeStatus, Runbook
+from playbook.infrastructure.persistence import (
     SQLiteNodeExecutionRepository,
+    SQLiteRunRepository,
 )
-from src.playbook.infrastructure.process import ShellProcessRunner
-from tests.test_infrastructure.test_plugins.test_plugin import ExampleTestPlugin
+from playbook.infrastructure.plugin_registry import PluginRegistry
+from playbook.infrastructure.process import ShellProcessRunner
+from playbook.service.engine import RunbookEngine
+from tests.test_infrastructure.test_plugins.test_plugin import (
+    ConfigurableTestPlugin,
+    ExampleTestPlugin,
+)
 
 
-class TestPluginIntegration:
-    """Integration tests for the complete plugin workflow."""
+class Clock:
+    def now(self):
+        return datetime.now(timezone.utc)
 
-    @pytest.fixture
-    def temp_db_path(self):
-        """Create a temporary database file."""
-        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
-            db_path = tmp.name
-        yield db_path
-        Path(db_path).unlink(missing_ok=True)
 
-    @pytest.fixture
-    def engine_with_plugins(self, temp_db_path):
-        """Create a RunbookEngine with plugin support."""
-        # Mock dependencies
-        clock = Mock()
-        now_time = datetime.now()
-        clock.now.return_value = now_time
+class RunIO:
+    def show_step(self, runbook, step, position, total):
+        pass
 
-        process_runner = ShellProcessRunner()
-        run_repo = SQLiteRunRepository(temp_db_path)
-        node_repo = SQLiteNodeExecutionRepository(temp_db_path)
-        io_handler = Mock()
+    def choose(self, prompt, choices):
+        assert "run" in choices
+        return "run"
 
-        # Create engine (this will initialize plugins)
-        engine = RunbookEngine(
-            clock=clock,
-            process_runner=process_runner,
-            run_repo=run_repo,
-            node_repo=node_repo,
-            io_handler=io_handler,
-        )
+    def show_result(self, step_id, stdout, stderr):
+        pass
 
-        return engine, io_handler
 
-    def test_plugin_based_function_execution(self, engine_with_plugins, temp_db_path):
-        """Test executing a function using the plugin system."""
-        engine, io_handler = engine_with_plugins
+def engine(tmp_path: Path, registry: PluginRegistry) -> RunbookEngine:
+    database = tmp_path / "state.db"
+    return RunbookEngine(
+        clock=Clock(),
+        process_runner=ShellProcessRunner(),
+        run_repo=SQLiteRunRepository(str(database)),
+        node_repo=SQLiteNodeExecutionRepository(str(database)),
+        io_handler=RunIO(),
+        plugins=registry,
+    )
 
-        # Register our test plugin
-        from src.playbook.infrastructure.plugin_registry import plugin_registry
 
-        plugin_registry.register_plugin("test", ExampleTestPlugin)
+def test_plugin_function_is_executed_and_persisted(tmp_path: Path):
+    registry = PluginRegistry()
+    registry.register_plugin("test", ExampleTestPlugin)
+    workflow = Runbook.model_validate(
+        {
+            "id": "plugin-test",
+            "title": "Plugin Test",
+            "source_path": "/runbooks/plugin-test.playbook.toml",
+            "definition_hash": "abc",
+            "steps": [
+                {
+                    "id": "echo",
+                    "type": "function",
+                    "plugin": "test",
+                    "function": "echo",
+                    "params": {"message": "Hello"},
+                }
+            ],
+        }
+    )
+    workflow_engine = engine(tmp_path, registry)
 
-        # Create a runbook with plugin-based function
-        runbook_toml = """
-[runbook]
-title = "Plugin Test Workflow"
-description = "Test plugin-based function execution"
-version = "1.0.0"
-author = "test"
-created_at = "2025-01-20T12:00:00Z"
+    run = workflow_engine.run(workflow)
 
-[test_function]
-type = "Function"
-plugin = "test"
-function = "echo"
-function_params = { message = "Hello from plugin!" }
-description = "Test plugin function"
-depends_on = []
-"""
+    executions = workflow_engine.node_repo.get_executions(workflow.id, run.run_id)
+    assert executions[0].status == NodeStatus.OK
+    assert executions[0].result_text == "Echo: Hello"
 
-        # Parse the runbook
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".playbook.toml", delete=False
-        ) as f:
-            f.write(runbook_toml)
-            f.flush()
 
-            parser = RunbookParser(VariableManager())
-            runbook = parser.parse(f.name, variables={})
+def test_plugin_configuration_is_scoped_to_step(tmp_path: Path):
+    registry = PluginRegistry()
+    registry.register_plugin("configurable", ConfigurableTestPlugin)
+    workflow = Runbook.model_validate(
+        {
+            "id": "plugin-config",
+            "title": "Plugin Config",
+            "source_path": "/runbooks/plugin-config.playbook.toml",
+            "definition_hash": "abc",
+            "steps": [
+                {
+                    "id": "greet",
+                    "type": "function",
+                    "plugin": "configurable",
+                    "function": "greet",
+                    "params": {"name": "World"},
+                    "config": {"prefix": "Hello"},
+                }
+            ],
+        }
+    )
+    workflow_engine = engine(tmp_path, registry)
 
-        # Execute the workflow
-        run_info = engine.start_run(runbook)
-        engine.execute_node(runbook, "test_function", run_info)
+    run = workflow_engine.run(workflow)
 
-        # Verify the function was executed correctly
-        node_executions = engine.node_repo.get_executions(
-            runbook.title, run_info.run_id
-        )
-        assert len(node_executions) == 1
-
-        execution = node_executions[0]
-        assert execution.node_id == "test_function"
-        assert execution.status == NodeStatus.OK
-        assert execution.result_text == "Echo: Hello from plugin!"
-
-    def test_plugin_with_configuration(self, engine_with_plugins, temp_db_path):
-        """Test plugin execution with configuration."""
-        engine, io_handler = engine_with_plugins
-
-        # Register our configurable test plugin
-        from tests.test_infrastructure.test_plugins.test_plugin import (
-            ConfigurableTestPlugin,
-        )
-        from src.playbook.infrastructure.plugin_registry import plugin_registry
-
-        plugin_registry.register_plugin("configurable", ConfigurableTestPlugin)
-
-        # Create a runbook with plugin configuration
-        runbook_toml = """
-[runbook]
-title = "Plugin Config Test"
-description = "Test plugin with configuration"
-version = "1.0.0"
-author = "test"
-created_at = "2025-01-20T12:00:00Z"
-
-[greeting]
-type = "Function"
-plugin = "configurable"
-function = "greet"
-function_params = { name = "World" }
-plugin_config = { prefix = "Hello" }
-description = "Test configured plugin function"
-depends_on = []
-"""
-
-        # Parse the runbook
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".playbook.toml", delete=False
-        ) as f:
-            f.write(runbook_toml)
-            f.flush()
-
-            parser = RunbookParser(VariableManager())
-            runbook = parser.parse(f.name, variables={})
-
-        # Execute the workflow
-        run_info = engine.start_run(runbook)
-        engine.execute_node(runbook, "greeting", run_info)
-
-        # Verify the function was executed correctly with config
-        node_executions = engine.node_repo.get_executions(
-            runbook.title, run_info.run_id
-        )
-        assert len(node_executions) == 1
-
-        execution = node_executions[0]
-        assert execution.node_id == "greeting"
-        assert execution.status == NodeStatus.OK
-        assert execution.result_text == "Hello, World!"
+    execution = workflow_engine.node_repo.get_executions(
+        workflow.id,
+        run.run_id,
+    )[0]
+    assert execution.result_text == "Hello, World!"

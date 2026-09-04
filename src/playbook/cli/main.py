@@ -7,15 +7,12 @@ import typer
 from rich.console import Console
 from rich.logging import RichHandler
 
-from .commands.config import config_cmd
 from .commands.create import create
-from .commands.info import info
+from .commands.migrate import migrate
 from .commands.run import run, resume
-from .commands.set_status import set_status
 from .commands.show import show
 from .commands.validate import validate
 from .commands.version import print_version
-from .commands.view_dag import view_dag
 
 # Create Typer app
 app = typer.Typer(
@@ -28,14 +25,11 @@ app = typer.Typer(
 console = Console()
 
 # Register commands
-app.command("config", help="Manage configuration")(config_cmd)
 app.command()(create)
 app.command()(validate)
-app.command()(view_dag)
+app.command()(migrate)
 app.command()(run)
 app.command()(resume)
-app.command("set-status", help="Manually set workflow run status")(set_status)
-app.command()(info)
 app.command()(show)
 app.command("version", help="Show version", hidden=True)(print_version)
 

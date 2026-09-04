@@ -383,7 +383,7 @@ class VariableManager:
             # Get value with validation
             while True:
                 try:
-                    value = Prompt.ask(prompt_msg)
+                    value = Prompt.ask(prompt_msg, password=definition.secret)
                     validated_value = self._validate_variable_type(value, definition)
                     self._validate_variable_constraints(
                         name, validated_value, definition
@@ -414,7 +414,6 @@ class VariableManager:
         except (TemplateError, UndefinedError) as e:
             raise TemplateRenderError(
                 f"Template rendering failed: {e}",
-                context={"template": template_str, "variables": list(variables.keys())},
                 suggestion="Check template syntax and ensure all variables are defined",
             )
 

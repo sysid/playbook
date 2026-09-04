@@ -1,94 +1,38 @@
-[runbook]
-title = "Python Plugin Demo"
-description = """
-Interactive demonstration of Python plugin functionality with built-in functions.
-This workflow guides users through examples of notify, sleep, and error handling
-capabilities with manual checkpoints for learning and experimentation.
-"""
-version = "1.0.0"
-author = "Playbook Team"
-created_at = "2025-01-20T12:00:00Z"
+schema_version = 2
 
 [variables]
-APP_NAME = { default = "demo-app", description = "Application name for demo" }
-SLEEP_DURATION = { default = 2, type = "int", min = 1, max = 10, description = "Sleep duration in seconds" }
-MESSAGE = { default = "Hello from Python plugin!", description = "Notification message" }
+APP_NAME = { default = "demo-app", description = "Application name" }
+WAIT_SECONDS = { default = 1, type = "int", min = 0, max = 10 }
 
-[start_notification]
-type = "Function"
+[runbook]
+id = "python-plugin-demo"
+title = "Python plugin demonstration"
+description = "Demonstrate step-scoped built-in plugin functions."
+version = "2.0.0"
+author = "Playbook Team"
+
+[[steps]]
+id = "announce"
+type = "function"
+name = "Announce the demonstration"
+instructions = "Call the built-in notification function."
 plugin = "python"
 function = "notify"
-function_params = { message = "🚀 Starting Python plugin demo workflow for {{APP_NAME}}" }
-description = """
-Send startup notification to begin the Python plugin demonstration workflow.
-This step initializes the demo process and provides clear communication
-about the workflow's purpose and expected progression through examples.
-"""
-depends_on = []
+params = { message = "Starting plugin demonstration for {{ APP_NAME }}" }
 
-[show_info]
-type = "Manual"
-prompt_after = "Demo started! Press Enter to continue with Python function examples..."
-description = """
-Manual checkpoint to confirm workflow initiation and user readiness.
-This pause allows users to review the workflow setup, understand
-the upcoming demonstrations, and proceed at their own pace.
-"""
-depends_on = ["start_notification"]
-
-[demonstrate_sleep]
-type = "Function"
+[[steps]]
+id = "wait"
+type = "function"
+name = "Wait briefly"
+instructions = "Demonstrate a parameterized plugin call."
 plugin = "python"
 function = "sleep"
-description = """
-Demonstrate the Python sleep utility function with configurable duration.
-This example shows how Python plugins can handle time-based operations,
-configurable parameters, and variable substitution in function calls.
-"""
-depends_on = ["show_info"]
+params = { seconds = "{{ WAIT_SECONDS }}" }
+verify = "Did the function complete normally?"
 
-[demonstrate_sleep.function_params]
-seconds = "{{SLEEP_DURATION}}"
-
-[progress_notification]
-type = "Function"
-plugin = "python"
-function = "notify"
-function_params = { message = "✅ Sleep completed! Continuing with {{APP_NAME}} demo..." }
-description = """
-Provide progress update notification to track workflow advancement.
-Keeps users informed about completed steps and upcoming demonstrations,
-maintaining clear communication throughout the plugin testing process.
-"""
-depends_on = ["demonstrate_sleep"]
-
-[demonstrate_error_handling]
-type = "Manual"
-prompt_after = "Next step will demonstrate error handling with throw function. Press Enter to continue or Ctrl+C to abort..."
-description = """
-Manual checkpoint before demonstrating error handling capabilities.
-This pause allows users to prepare for the intentional error demonstration
-and understand how the workflow handles function failures gracefully.
-"""
-depends_on = ["progress_notification"]
-
-[completion_notification]
-type = "Function"
-plugin = "python"
-function = "throw"
-description = """
-Demonstrate error handling by intentionally throwing an exception.
-This step shows how Python plugins handle failures, error propagation,
-and workflow recovery mechanisms in a controlled testing environment.
-"""
-depends_on = ["demonstrate_error_handling"]
-
-[final_checkpoint]
-type = "Manual"
-prompt_after = "Demo completed! All Python plugin utility functions (notify, sleep, throw) have been demonstrated. Press Enter to finish..."
-description = """
-Final manual checkpoint for reviewing demonstration results and outcomes.
-Provides opportunity to examine workflow execution logs, understand
-the behavior of each plugin function, and conclude the demo successfully.
-"""
-depends_on = ["completion_notification"]
+[[steps]]
+id = "finish"
+type = "manual"
+name = "Review the result"
+instructions = "Confirm that both plugin steps completed and their output was shown."
+prompt = "Is the demonstration complete?"

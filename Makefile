@@ -4,61 +4,16 @@ MAKEFLAGS += --no-print-directory
 VERSION       = $(shell cat VERSION)
 PACKAGE_NAME  = playbook
 
-app_root = .
-pkg_src  = $(app_root)/src/$(PACKAGE_NAME)
+app_root := $(if $(PROJ_DIR),$(PROJ_DIR),$(CURDIR))
+pkg_src   = $(app_root)/src/playbook
 tests_src = $(app_root)/tests
+
+.PHONY: all
+all: clean build  ## clean and build
 
 ################################################################################
 # Development \
 DEVELOP: ## ############################################################
-
-################################################################################
-# Testing \
-TESTING: ## ############################################################
-
-.PHONY: test
-test:  ## Run tests with pytest
-	python -m pytest --cov-report=xml --cov-report term --cov=$(pkg_src) $(tests_src)
-
-################################################################################
-# Code Quality \
-QUALITY: ## ############################################################
-
-.PHONY: lint
-lint: ruff mypy  ## Run all linters
-
-.PHONY: ruff-fix
-ruff-fix:  ## Run ruff and autofix
-	ruff check --fix $(pkg_src) $(tests_src)
-
-.PHONY: ruff
-ruff:  ## Run ruff
-	ruff check $(pkg_src) $(tests_src)
-
-.PHONY: mypy
-mypy:  ## Run mypy
-	mypy $(pkg_src)
-
-.PHONY: format
-format:  ## Format code with ruff
-	ruff format $(pkg_src) $(tests_src)
-
-################################################################################
-# Building \
-BUILDING: ## ############################################################
-
-
-.PHONY: all
-all: clean build publish  ## all: build and publish
-
-.PHONY: build
-build: clean format  ## Build package
-	python -m build
-
-.PHONY: publish
-publish:  ## publish
-	@echo "upload to Pypi"
-	twine upload --verbose dist/*
 
 .PHONY: install
 install: uninstall  ## uv install
@@ -68,6 +23,55 @@ install: uninstall  ## uv install
 .PHONY: uninstall
 uninstall:  ## uv uninstall
 	-uv tool uninstall $(PACKAGE_NAME)
+
+.PHONY: pre-commit-install
+pre-commit-install:  ## install pre-commit hooks
+	uv run pre-commit install
+
+################################################################################
+# Testing \
+TESTING:  ## ############################################################
+
+.PHONY: test
+test:  ## run tests with coverage
+	uv run pytest --cov=$(pkg_src) --cov-report=term-missing $(tests_src)
+
+################################################################################
+# Code Quality \
+QUALITY:  ## ############################################################
+
+.PHONY: format
+format:  ## perform ruff formatting
+	uv run ruff format $(pkg_src) $(tests_src)
+
+.PHONY: lint
+lint:  ## check style with ruff
+	uv run ruff check $(pkg_src) $(tests_src)
+
+.PHONY: lint-fix
+lint-fix:  ## check style with ruff and autofix
+	uv run ruff check --fix $(pkg_src) $(tests_src)
+
+.PHONY: ty
+ty:  ## check type hint annotations
+	uv run ty check $(pkg_src)
+
+.PHONY: check
+check: lint ty test  ## run all quality gates
+
+################################################################################
+# Building, Deploying \
+BUILDING:  ## ############################################################
+
+.PHONY: build
+build: clean format  ## format and build
+	@echo "building"
+	uv build
+
+.PHONY: publish
+publish:  ## publish to PyPI
+	@echo "upload to Pypi"
+	uv run twine upload --verbose dist/*
 
 .PHONY: bump-major
 bump-major: check-github-token  ## bump-major, tag and push
@@ -111,11 +115,12 @@ check-github-token:  ## Check if GITHUB_TOKEN is set
 ################################################################################
 # Clean \
 CLEAN:  ## ############################################################
+
 .PHONY: clean
 clean: clean-build clean-pyc  ## remove all build, test, coverage and Python artifacts
 
 .PHONY: clean-build
-clean-build: ## remove build artifacts
+clean-build:  ## remove build artifacts
 	rm -fr build/
 	rm -fr dist/
 	rm -fr .eggs/
@@ -123,17 +128,15 @@ clean-build: ## remove build artifacts
 	find . \( -path ./env -o -path ./venv -o -path ./.env -o -path ./.venv \) -prune -o -name '*.egg' -exec rm -f {} +
 
 .PHONY: clean-pyc
-clean-pyc: ## remove Python file artifacts
+clean-pyc:  ## remove Python file artifacts
 	find . -name '*.pyc' -exec rm -f {} +
 	find . -name '*.pyo' -exec rm -f {} +
 	find . -name '*~' -exec rm -f {} +
 	find . -name '__pycache__' -exec rm -fr {} +
 
-
-
 ################################################################################
-# Help \
-HELP: ## ############################################################
+# Misc \
+MISC:  ## ############################################################
 
 define PRINT_HELP_PYSCRIPT
 import re, sys
@@ -148,4 +151,4 @@ export PRINT_HELP_PYSCRIPT
 
 .PHONY: help
 help:
-	@python -c "$$PRINT_HELP_PYSCRIPT" < $(MAKEFILE_LIST)
+	@uv run python -c "$$PRINT_HELP_PYSCRIPT" < $(MAKEFILE_LIST)

@@ -3,8 +3,8 @@
 
 import pytest
 
-from src.playbook.infrastructure.plugins.python_plugin import PythonPlugin
-from src.playbook.domain.plugins import PluginExecutionError
+from playbook.infrastructure.plugins.python_plugin import PythonPlugin
+from playbook.domain.plugins import PluginExecutionError
 
 
 class TestPythonPlugin:

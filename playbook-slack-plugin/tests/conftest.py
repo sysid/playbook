@@ -15,12 +15,14 @@ def slack_plugin():
 def initialized_plugin():
     """Create an initialized SlackPlugin instance with mock configuration."""
     plugin = SlackPlugin()
-    plugin.initialize({
-        "webhook_url": "https://hooks.slack.com/services/TEST/TEST/TEST",
-        "bot_token": "xoxb-test-token",
-        "default_channel": "#general",
-        "timeout": 30,
-    })
+    plugin.initialize(
+        {
+            "webhook_url": "https://hooks.slack.com/services/TEST/TEST/TEST",
+            "bot_token": "xoxb-test-token",
+            "default_channel": "#general",
+            "timeout": 30,
+        }
+    )
     return plugin
 
 
@@ -28,10 +30,12 @@ def initialized_plugin():
 def webhook_only_plugin():
     """Create a SlackPlugin instance with only webhook configuration."""
     plugin = SlackPlugin()
-    plugin.initialize({
-        "webhook_url": "https://hooks.slack.com/services/TEST/TEST/TEST",
-        "timeout": 30,
-    })
+    plugin.initialize(
+        {
+            "webhook_url": "https://hooks.slack.com/services/TEST/TEST/TEST",
+            "timeout": 30,
+        }
+    )
     return plugin
 
 
@@ -39,19 +43,23 @@ def webhook_only_plugin():
 def bot_token_only_plugin():
     """Create a SlackPlugin instance with only bot token configuration."""
     plugin = SlackPlugin()
-    plugin.initialize({
-        "bot_token": "xoxb-test-token",
-        "default_channel": "#general",
-        "timeout": 30,
-    })
+    plugin.initialize(
+        {
+            "bot_token": "xoxb-test-token",
+            "default_channel": "#general",
+            "timeout": 30,
+        }
+    )
     return plugin
 
 
 @pytest.fixture
 def mock_requests():
-    """Mock requests module."""
-    with patch("playbook_slack.plugin.requests") as mock_requests:
-        yield mock_requests
+    """Mock HTTP calls without replacing exception classes."""
+    with patch("playbook_slack.plugin.requests.post") as mock_post:
+        requests = Mock()
+        requests.post = mock_post
+        yield requests
 
 
 @pytest.fixture

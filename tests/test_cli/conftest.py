@@ -3,12 +3,9 @@
 
 import tempfile
 from pathlib import Path
-from unittest.mock import Mock
 
 import pytest
 from typer.testing import CliRunner
-
-from playbook.cli.main import app
 
 
 @pytest.fixture
@@ -21,18 +18,20 @@ def cli_runner():
 def sample_toml_content():
     """Sample TOML content for testing."""
     return """
+schema_version = 2
+
 [runbook]
+id = "test-workflow"
 title = "Test Workflow"
 description = "Test workflow for CLI testing"
 version = "0.1.0"
 author = "test"
-created_at = "2025-01-20T12:00:00Z"
 
-[test_step]
-type = "Command"
-command_name = "echo 'test'"
-description = "Simple test step"
-depends_on = []
+[[steps]]
+id = "test-step"
+type = "command"
+command = "echo 'test'"
+instructions = "Simple test step"
 """
 
 
@@ -56,24 +55,3 @@ def temp_dir():
     """Create a temporary directory for testing."""
     with tempfile.TemporaryDirectory() as tmp_dir:
         yield Path(tmp_dir)
-
-
-@pytest.fixture
-def mock_engine():
-    """Mock engine for CLI testing."""
-    engine = Mock()
-    engine.validate.return_value = []  # No validation errors
-    return engine
-
-
-@pytest.fixture
-def mock_parser():
-    """Mock parser for CLI testing."""
-    parser = Mock()
-    return parser
-
-
-@pytest.fixture
-def cli_app():
-    """Provide the CLI app for testing."""
-    return app

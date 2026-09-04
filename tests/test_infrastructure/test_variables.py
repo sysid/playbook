@@ -9,13 +9,13 @@ from unittest.mock import patch
 
 import pytest
 
-from src.playbook.domain.models import VariableDefinition
-from src.playbook.infrastructure.variables import (
+from playbook.domain.models import VariableDefinition
+from playbook.infrastructure.variables import (
     VariableManager,
     VariableValidationError,
     TemplateRenderError,
 )
-from src.playbook.domain.exceptions import ConfigurationError
+from playbook.domain.exceptions import ConfigurationError
 
 
 class TestVariableDefinition:

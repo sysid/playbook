@@ -1,13 +1,12 @@
-# src/playbook/cli/commands/run.py
-"""Run and resume command implementations."""
+"""Run and resume ordered playbooks."""
 
 from pathlib import Path
-from typing import Optional, List, Dict, Any
+from typing import Any
 
 import typer
-from rich.progress import Progress, TextColumn, BarColumn, TimeElapsedColumn
-from rich.prompt import Prompt
 
+from ...domain.models import RunInfo, RunStatus
+from ...infrastructure.locking import WorkflowLock
 from ..common import (
     console,
     get_engine,
@@ -16,563 +15,150 @@ from ..common import (
     handle_error_and_exit,
 )
 from ..interaction.handlers import ConsoleNodeIOHandler
-from ...domain.models import (
-    NodeStatus,
-    RunStatus,
-    Runbook,
-    RunInfo,
-    TriggerType,
-)
-from ...domain.exceptions import ParseError, ExecutionError
-from ...infrastructure.parser import RunbookParser
-from ...service.engine import RunbookEngine
 
 
 def run(
     ctx: typer.Context,
     file: Path = typer.Argument(..., help="Runbook file path"),
-    state_path: Optional[str] = typer.Option(
-        None, "--state-path", help="State database path"
+    state_path: str | None = typer.Option(
+        None,
+        "--state-path",
+        help="State database path",
     ),
-    max_retries: int = typer.Option(
-        3, "--max-retries", help="Maximum retry attempts per failed node"
+    max_attempts: int = typer.Option(
+        3,
+        "--max-attempts",
+        min=1,
+        help="Maximum executions of a command or function step",
     ),
-    var: Optional[List[str]] = typer.Option(
-        None, "--var", help="Set variable in KEY=VALUE format"
+    var: list[str] | None = typer.Option(
+        None,
+        "--var",
+        help="Set variable as KEY=VALUE",
     ),
-    vars_file: Optional[str] = typer.Option(
-        None, "--vars-file", help="Load variables from file"
-    ),
-    vars_env: Optional[str] = typer.Option(
-        "PLAYBOOK_VAR_",
-        "--vars-env",
-        help="Environment variable prefix for loading variables",
-    ),
-    no_interactive_vars: bool = typer.Option(
-        False,
-        "--no-interactive-vars",
-        help="Don't prompt for missing required variables",
-    ),
+    vars_file: str | None = typer.Option(None, "--vars-file"),
+    vars_env: str | None = typer.Option("PLAYBOOK_VAR_", "--vars-env"),
+    no_interactive_vars: bool = typer.Option(False, "--no-interactive-vars"),
 ) -> None:
-    """Run a playbook from start to finish"""
+    """Start a guided workflow run."""
     try:
-        # Process variables
-        variables = _collect_variables(
-            var, vars_file, vars_env, not no_interactive_vars
+        runbook = _parse_runbook(
+            file,
+            var,
+            vars_file,
+            vars_env,
+            not no_interactive_vars,
         )
-
-        parser = get_parser(interactive=not no_interactive_vars)
-        _execute_workflow(
-            parser, file, state_path, variables=variables, max_retries=max_retries
+        engine = get_engine(
+            state_path,
+            ConsoleNodeIOHandler(console),
+            max_attempts,
         )
+        with WorkflowLock(_lock_path(state_path, runbook.id)):
+            result = engine.run(runbook)
+        _show_result(result)
     except KeyboardInterrupt:
-        console.print("\n[yellow]Workflow interrupted by user (CTRL-C)[/yellow]")
-        raise typer.Exit(code=130)  # Standard exit code for CTRL-C
-    except Exception as e:
-        handle_error_and_exit(e, "Runbook execution", ctx.params.get("verbose", False))
+        console.print("Workflow interrupted; the run was marked aborted.")
+        raise typer.Exit(code=130) from None
+    except Exception as error:
+        handle_error_and_exit(
+            error,
+            "Runbook execution",
+            ctx.params.get("verbose", False),
+        )
 
 
 def resume(
     ctx: typer.Context,
     file: Path = typer.Argument(..., help="Runbook file path"),
-    run_id: Optional[int] = typer.Argument(
-        None, help="Run ID to resume (defaults to latest aborted run)"
+    run_id: int | None = typer.Argument(
+        None, help="Run ID; defaults to latest aborted"
     ),
-    node_id: Optional[str] = typer.Option(
-        None, "--node", help="Node ID to resume from"
+    state_path: str | None = typer.Option(
+        None,
+        "--state-path",
+        help="State database path",
     ),
-    state_path: Optional[str] = typer.Option(
-        None, "--state-path", help="State database path"
+    max_attempts: int = typer.Option(
+        3,
+        "--max-attempts",
+        min=1,
+        help="Maximum executions of a command or function step",
     ),
-    max_retries: int = typer.Option(
-        3, "--max-retries", help="Maximum retry attempts per failed node"
-    ),
-    var: Optional[List[str]] = typer.Option(
-        None, "--var", help="Set variable in KEY=VALUE format"
-    ),
-    vars_file: Optional[str] = typer.Option(
-        None, "--vars-file", help="Load variables from file"
-    ),
-    vars_env: Optional[str] = typer.Option(
-        "PLAYBOOK_VAR_",
-        "--vars-env",
-        help="Environment variable prefix for loading variables",
-    ),
-    no_interactive_vars: bool = typer.Option(
-        False,
-        "--no-interactive-vars",
-        help="Don't prompt for missing required variables",
-    ),
+    var: list[str] | None = typer.Option(None, "--var"),
+    vars_file: str | None = typer.Option(None, "--vars-file"),
+    vars_env: str | None = typer.Option("PLAYBOOK_VAR_", "--vars-env"),
+    no_interactive_vars: bool = typer.Option(False, "--no-interactive-vars"),
 ) -> None:
-    """Resume a previously started run"""
+    """Continue the first incomplete step of an aborted run."""
     try:
-        # Process variables
-        variables = _collect_variables(
-            var, vars_file, vars_env, not no_interactive_vars
+        runbook = _parse_runbook(
+            file,
+            var,
+            vars_file,
+            vars_env,
+            not no_interactive_vars,
         )
-
-        parser = get_parser(interactive=not no_interactive_vars)
-
-        # If no run_id provided, find latest aborted run
-        if run_id is None:
-            run_id = _find_latest_resumable_run(file, state_path)
-            if run_id is None:
-                console.print(
-                    "[bold red]No resumable (ABORTED) runs found for this workflow[/bold red]"
-                )
-                raise typer.Exit(code=1)
-            console.print(
-                f"[bold blue]Resuming latest aborted run: {run_id}[/bold blue]"
-            )
-
-        _execute_workflow(
-            parser, file, state_path, run_id, node_id, max_retries, variables=variables
+        engine = get_engine(
+            state_path,
+            ConsoleNodeIOHandler(console),
+            max_attempts,
         )
+        selected_run_id = run_id or _latest_aborted_run_id(
+            engine.run_repo.list_runs(runbook.id)
+        )
+        if selected_run_id is None:
+            raise ValueError(f"No aborted runs found for '{runbook.id}'")
+        with WorkflowLock(_lock_path(state_path, runbook.id)):
+            result = engine.resume(runbook, selected_run_id)
+        _show_result(result)
     except KeyboardInterrupt:
-        console.print("\n[yellow]Workflow interrupted by user (CTRL-C)[/yellow]")
-        raise typer.Exit(code=130)  # Standard exit code for CTRL-C
-    except Exception as e:
-        handle_error_and_exit(e, "Runbook resume", ctx.params.get("verbose", False))
+        console.print("Workflow interrupted; the run was marked aborted.")
+        raise typer.Exit(code=130) from None
+    except Exception as error:
+        handle_error_and_exit(
+            error,
+            "Runbook resume",
+            ctx.params.get("verbose", False),
+        )
 
 
-def _find_latest_resumable_run(
-    file: Path, state_path: Optional[str] = None
-) -> Optional[int]:
-    """Find the latest ABORTED run for the given workflow."""
-    from ..common import get_engine
-    from ...infrastructure.parser import RunbookParser
-
-    # Parse runbook to get workflow name
-    parser = RunbookParser()
-    try:
-        runbook = parser.parse(str(file))
-    except Exception:
-        return None
-
-    # Get engine and query for ABORTED runs
-    engine = get_engine(state_path)
-
-    # Get all runs for this workflow
-    try:
-        runs = engine.run_repo.list_runs(runbook.title)
-    except Exception:
-        return None
-
-    # Filter for ABORTED runs and get the most recent
-    aborted_runs = [r for r in runs if r.status == RunStatus.ABORTED]
-    if not aborted_runs:
-        return None
-
-    # Sort by run_id (descending) to get latest
-    aborted_runs.sort(key=lambda r: r.run_id, reverse=True)
-    return aborted_runs[0].run_id
+def _parse_runbook(
+    file: Path,
+    var: list[str] | None,
+    vars_file: str | None,
+    vars_env: str | None,
+    interactive: bool,
+):
+    variables = _collect_variables(var, vars_file, vars_env, interactive)
+    return get_parser(interactive=interactive).parse(file, variables=variables)
 
 
 def _collect_variables(
-    var: Optional[List[str]],
-    vars_file: Optional[str],
-    vars_env: Optional[str],
+    var: list[str] | None,
+    vars_file: str | None,
+    vars_env: str | None,
     interactive: bool,
-) -> Dict[str, Any]:
-    """Collect variables from all sources."""
-    var_manager = get_variable_manager(interactive=interactive)
-
-    # Collect from different sources
-    cli_vars = {}
-    file_vars = {}
-    env_vars = {}
-
-    # CLI variables
-    if var:
-        cli_vars = var_manager.parse_cli_variables(var)
-
-    # File variables
-    if vars_file:
-        file_vars = var_manager.load_variables_from_file(vars_file)
-
-    # Environment variables
-    if vars_env:
-        env_vars = var_manager.load_variables_from_env(vars_env)
-
-    # Merge with priority
-    return var_manager.merge_variables(
-        cli_vars=cli_vars, file_vars=file_vars, env_vars=env_vars
+) -> dict[str, Any]:
+    manager = get_variable_manager(interactive=interactive)
+    return manager.merge_variables(
+        cli_vars=manager.parse_cli_variables(var or []),
+        file_vars=(manager.load_variables_from_file(vars_file) if vars_file else {}),
+        env_vars=(manager.load_variables_from_env(vars_env) if vars_env else {}),
     )
 
 
-def _execute_workflow(
-    parser: RunbookParser,
-    file: Path,
-    state_path: Optional[str] = None,
-    run_id: Optional[int] = None,
-    start_node_id: Optional[str] = None,
-    max_retries: int = 3,
-    variables: Optional[Dict[str, Any]] = None,
-) -> None:
-    """
-    Shared workflow execution logic for both run and resume commands
-    """
-    # Parse runbook
-    console.print(f"Parsing runbook: {file}")
-    try:
-        runbook = parser.parse(str(file), variables=variables)
-    except FileNotFoundError:
-        raise ParseError(
-            f"Runbook file not found: {file}",
-            suggestion="Check the file path and ensure the file exists",
-        )
-    except Exception as e:
-        raise ParseError(
-            f"Failed to parse runbook: {str(e)}",
-            context={"file": str(file)},
-            suggestion="Check the TOML syntax and ensure all required fields are present",
-        )
+def _latest_aborted_run_id(runs: list[RunInfo]) -> int | None:
+    aborted = [run.run_id for run in runs if run.status == RunStatus.ABORTED]
+    return max(aborted, default=None)
 
-    # Create progress display and IO handler
-    progress = Progress(
-        TextColumn("[bold blue]{task.description}"),
-        BarColumn(),
-        "[progress.percentage]{task.percentage:>3.0f}%",
-        TimeElapsedColumn(),
+
+def _lock_path(state_path: str | None, workflow_id: str) -> Path:
+    database_path = Path(state_path or "~/.config/playbook/run.db").expanduser()
+    return database_path.with_name(f"{database_path.name}.{workflow_id}.lock")
+
+
+def _show_result(run_info: RunInfo) -> None:
+    console.print(
+        f"Run {run_info.run_id} finished with status: {run_info.status.value}"
     )
-    io_handler = ConsoleNodeIOHandler(console, progress)
-    engine = get_engine(state_path, io_handler)
-
-    # Initialize run info based on whether we're resuming or starting fresh
-    try:
-        if run_id is not None:
-            console.print(f"Resuming run: {runbook.title} (Run ID: {run_id})")
-            run_info = engine.resume_run(runbook, run_id, start_node_id)
-        else:
-            console.print(f"Starting run: {runbook.title}")
-            run_info = engine.start_run(runbook)
-            console.print(f"Run ID: {run_info.run_id}")
-    except Exception as e:
-        raise ExecutionError(
-            f"Failed to initialize workflow execution: {str(e)}",
-            context={"runbook": runbook.title, "run_id": run_id},
-            suggestion="Check database connectivity and ensure the run ID exists",
-        )
-
-    # Get execution order
-    order = engine._get_execution_order(runbook)
-
-    # Determine which nodes to run
-    nodes_to_run = _determine_nodes_to_run(
-        engine, runbook, run_info, order, start_node_id
-    )
-
-    if not nodes_to_run:
-        console.print(
-            "[bold yellow]No nodes to execute - all nodes are already completed[/bold yellow]"
-        )
-        return
-
-    # Execute the workflow with interruption handling
-    try:
-        _execute_nodes(
-            engine,
-            runbook,
-            run_info,
-            nodes_to_run,
-            progress,
-            io_handler,
-            max_retries,
-            variables,
-        )
-    except KeyboardInterrupt:
-        # Mark run as aborted on CTRL-C
-        run_info.status = RunStatus.ABORTED
-        engine.run_repo.update_run(run_info)
-        console.print(
-            f"\n[bold yellow]Run ID {run_info.run_id} has been marked as ABORTED and can be resumed with:[/bold yellow]"
-        )
-        console.print(f"  playbook resume {file} {run_info.run_id}")
-        raise  # Re-raise to be caught by outer handler
-
-
-def _determine_nodes_to_run(
-    engine: RunbookEngine,
-    runbook: Runbook,
-    run_info: RunInfo,
-    order: List[str],
-    start_node_id: Optional[str] = None,
-) -> List[str]:
-    """
-    Determine which nodes need to be executed based on run state
-    """
-    # For a new run, execute all nodes
-    if run_info.trigger == TriggerType.RUN:
-        return order
-
-    # For resume, get existing executions to determine what to run
-    existing_executions = engine.node_repo.get_executions(
-        runbook.title, run_info.run_id
-    )
-
-    # Create a map of node_id to its latest execution
-    node_executions = {}
-    for execution in existing_executions:
-        node_executions[execution.node_id] = execution
-
-    # Determine which nodes to run
-    start_idx = 0
-    if start_node_id:
-        try:
-            start_idx = order.index(start_node_id)
-        except ValueError:
-            raise ExecutionError(
-                f"Start node '{start_node_id}' not found in runbook",
-                context={"available_nodes": list(order)},
-                suggestion="Check the node ID and ensure it exists in the runbook",
-            )
-
-    # Include all nodes from start_idx that haven't successfully completed
-    nodes_to_run = []
-    for i in range(start_idx, len(order)):
-        current_node_id = order[i]
-        if current_node_id not in node_executions or node_executions[
-            current_node_id
-        ].status not in [NodeStatus.OK, NodeStatus.SKIPPED]:
-            nodes_to_run.append(current_node_id)
-
-    return nodes_to_run
-
-
-def _execute_nodes(
-    engine: RunbookEngine,
-    runbook: Runbook,
-    run_info: RunInfo,
-    nodes_to_run: List[str],
-    progress: Progress,
-    io_handler: ConsoleNodeIOHandler,
-    max_retries: int = 3,
-    variables: Optional[Dict[str, Any]] = None,
-) -> None:
-    """
-    Execute the given nodes in the runbook
-    """
-    # Get all existing executions at the beginning
-    existing_executions = engine.node_repo.get_executions(
-        runbook.title, run_info.run_id
-    )
-    existing_executions_map = {ex.node_id: ex for ex in existing_executions}
-
-    # Start the progress display with a single task
-    with progress:
-        task = progress.add_task("Executing workflow...", total=len(nodes_to_run) + 1)
-
-        # Display runbook description and effective variables
-        _display_runbook_info(runbook, variables or {})
-
-        for i, current_node_id in enumerate(nodes_to_run):
-            node = runbook.nodes[current_node_id]
-            node_display_name = node.name or current_node_id
-
-            # Set the current node in the IO handler
-            io_handler.set_current_node(current_node_id)
-
-            # Add empty lines before each node
-            console.print()
-            console.print()
-            console.print()
-
-            # Update progress bar with current node
-            progress.start()
-            progress.update(task, description=f"{node_display_name}")
-            progress.stop()
-            # noinspection PyTypeChecker
-            io_handler.display_node_header(node.id, node.name, node.type.value)
-            # Hide the progress bar during execution to prevent duplicate display
-
-            # Check if this node has an existing execution record
-            existing_execution = existing_executions_map.get(current_node_id)
-
-            # Execute node based on whether it has an existing execution
-            if existing_execution and existing_execution.status != NodeStatus.OK:
-                # Resume with existing record
-                status, execution = engine.resume_node_execution(
-                    runbook, current_node_id, run_info, existing_execution, variables
-                )
-            else:
-                # Create new execution record (for fresh nodes)
-                status, execution = engine.execute_node(
-                    runbook, current_node_id, run_info, variables
-                )
-
-            # Update progress based on result
-            if status == NodeStatus.OK:
-                progress.update(
-                    task, description=f"Completed: {node_display_name}", advance=1
-                )
-            elif status == NodeStatus.NOK:
-                progress.update(
-                    task, description=f"Failed: {node_display_name}", advance=1
-                )
-
-                # Handle node failure with retry loop
-                node_completed = False
-
-                # Interactive failure handling loop
-                while not node_completed:
-                    # Show error details
-                    if execution.exception:
-                        console.print(
-                            f"[bold red]Error:[/bold red] {execution.exception}"
-                        )
-
-                    if execution.stderr:
-                        console.print(
-                            f"[bold red]stderr:[/bold red]\n{execution.stderr}"
-                        )
-
-                    # Get current attempt number for this node
-                    latest_execution = engine.node_repo.get_latest_execution_attempt(
-                        runbook.title, run_info.run_id, current_node_id
-                    )
-                    current_attempt = (
-                        latest_execution.attempt if latest_execution else 0
-                    )
-
-                    # If max retries reached, only allow skip/abort
-                    if current_attempt >= max_retries:
-                        if node.critical:
-                            console.print(
-                                f"[bold red]Critical node failed after {max_retries} attempts. Aborting.[/bold red]"
-                            )
-                            run_info.status = RunStatus.ABORTED
-                            engine.run_repo.update_run(run_info)
-                            node_completed = True
-                            break
-                        else:
-                            prompt_text = f"Node failed. Maximum retries ({max_retries}) reached. Skip (s) or Abort (a)?"
-                            choices = ["s", "a"]
-                            default = "a"
-                            progress.stop()  # Hide progress bar for user interaction
-                            choice = Prompt.ask(
-                                prompt_text, choices=choices, default=default
-                            )
-
-                            if choice == "s":
-                                console.print("Skipping node")
-                                execution.status = NodeStatus.SKIPPED
-                                engine.node_repo.update_execution(execution)
-                                progress.update(
-                                    task,
-                                    description=f"Skipped: {node_display_name}",
-                                    advance=1,
-                                )
-                                node_completed = True
-                            else:  # choice == "a"
-                                console.print("Aborting run")
-                                run_info.status = RunStatus.ABORTED
-                                engine.run_repo.update_run(run_info)
-                                node_completed = True
-                                break
-                    else:
-                        # Still have retries available
-                        prompt_text = f"Node failed (attempt {current_attempt}/{max_retries}). Retry (r), Skip (s), or Abort (a)?"
-                        choices = ["r", "s", "a"]
-                        default = "r"
-
-                        # Ask user what to do
-                        progress.stop()  # Hide progress bar for user interaction
-                        choice = Prompt.ask(
-                            prompt_text, choices=choices, default=default
-                        )
-
-                        if choice == "r":
-                            next_attempt = current_attempt + 1
-                            console.print(
-                                f"Retrying node '{current_node_id}' (attempt {next_attempt}/{max_retries})..."
-                            )
-
-                            # Execute single retry attempt creating a new execution record
-                            status, execution = engine.execute_node_retry(
-                                runbook,
-                                current_node_id,
-                                run_info,
-                                next_attempt,
-                                variables,
-                            )
-
-                            if status == NodeStatus.OK:
-                                console.print(
-                                    f"[bold green]Node '{current_node_id}' succeeded on attempt {next_attempt}[/bold green]"
-                                )
-                                progress.update(
-                                    task,
-                                    description=f"Completed: {node_display_name}",
-                                    advance=1,
-                                )
-                                node_completed = True
-                            else:
-                                console.print(
-                                    f"[bold red]Retry attempt {next_attempt} failed[/bold red]"
-                                )
-                                # Loop will continue with updated attempt count
-
-                        elif choice == "s":
-                            if node.critical:
-                                console.print(
-                                    "[bold red]Cannot skip critical node[/bold red]"
-                                )
-                                # Loop will continue to prompt user again
-                            else:
-                                console.print("Skipping node")
-                                execution.status = NodeStatus.SKIPPED
-                                engine.node_repo.update_execution(execution)
-                                progress.update(
-                                    task,
-                                    description=f"Skipped: {node_display_name}",
-                                    advance=1,
-                                )
-                                node_completed = True
-
-                        elif choice == "a":
-                            console.print("Aborting run")
-                            run_info.status = RunStatus.ABORTED
-                            engine.run_repo.update_run(run_info)
-                            node_completed = True
-                            break
-
-                # Break out of main node loop if run was aborted
-                if run_info.status == RunStatus.ABORTED:
-                    break
-
-            engine.update_run_status(runbook, run_info)
-
-        # Update run status
-        final_status = engine.update_run_status(runbook, run_info)
-
-        # Show final status
-        if final_status == RunStatus.OK:
-            progress.start()  # Avoid showing progress on failure again
-            console.print("\n[bold green]Run completed successfully[/bold green]")
-            progress.update(task, description="Success!", advance=1)
-        else:
-            console.print("\n[bold red]Run failed[/bold red]")
-
-
-def _display_runbook_info(runbook: Runbook, variables: Dict[str, Any]) -> None:
-    """Display runbook description and effective variables."""
-    console.print()
-
-    # Display runbook description
-    console.print(runbook.description or "No description provided")
-
-    # Display effective variables if any
-    if variables:
-        console.print()
-        for key, value in sorted(variables.items()):
-            # Handle different value types
-            if isinstance(value, str):
-                formatted_value = f'"{value}"'
-            elif isinstance(value, list):
-                formatted_value = str(value)
-            else:
-                formatted_value = str(value)
-
-            console.print(f"{key} = [green]{formatted_value}[/green]")
-
-        console.print()

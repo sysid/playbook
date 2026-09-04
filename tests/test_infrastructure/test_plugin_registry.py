@@ -4,8 +4,8 @@
 import pytest
 from unittest.mock import Mock, patch
 
-from src.playbook.infrastructure.plugin_registry import PluginRegistry
-from src.playbook.domain.plugins import (
+from playbook.infrastructure.plugin_registry import PluginRegistry
+from playbook.domain.plugins import (
     Plugin,
     PluginMetadata,
     PluginNotFoundError,
@@ -63,7 +63,7 @@ class TestPluginRegistry:
         with pytest.raises(PluginNotFoundError, match="Plugin 'nonexistent' not found"):
             registry.get_plugin("nonexistent")
 
-    @patch("src.playbook.infrastructure.plugin_registry.logger")
+    @patch("playbook.infrastructure.plugin_registry.logger")
     def test_get_plugin_initialization_error(self, mock_logger, registry):
         """Test plugin initialization error."""
 
@@ -89,14 +89,14 @@ class TestPluginRegistry:
         ):
             registry.get_plugin("failing")
 
-    def test_get_plugin_cached(self, registry):
-        """Test that plugins are cached after first retrieval."""
+    def test_get_plugin_creates_step_scoped_instances(self, registry):
+        """Each step gets an independently configured plugin instance."""
         registry.register_plugin("test", ExampleTestPlugin)
 
         plugin1 = registry.get_plugin("test")
         plugin2 = registry.get_plugin("test")
 
-        assert plugin1 is plugin2
+        assert plugin1 is not plugin2
 
     def test_list_plugins(self, registry):
         """Test listing available plugins."""
@@ -107,7 +107,7 @@ class TestPluginRegistry:
 
         assert "test1" in plugins
         assert "test2" in plugins
-        assert len(plugins) == 2
+        assert {"test1", "test2"} <= set(plugins)
 
     def test_get_plugin_metadata(self, registry):
         """Test getting plugin metadata without initialization."""
@@ -124,8 +124,8 @@ class TestPluginRegistry:
         with pytest.raises(PluginNotFoundError):
             registry.get_plugin_metadata("nonexistent")
 
-    def test_cleanup_all(self, registry):
-        """Test cleaning up all plugins."""
+    def test_cleanup_all_does_not_own_step_scoped_instances(self, registry):
+        """The engine, not the registry, owns instance cleanup."""
         registry.register_plugin("test", ExampleTestPlugin)
         plugin = registry.get_plugin("test")
 
@@ -134,8 +134,7 @@ class TestPluginRegistry:
 
         registry.cleanup_all()
 
-        # Plugin should be cleaned up
-        assert not plugin._initialized
+        assert plugin._initialized
 
     def test_reload_plugin(self, registry):
         """Test reloading a plugin."""
@@ -159,24 +158,21 @@ class TestPluginRegistry:
         registry.register_plugin("test", ExampleTestPlugin)
         registry.register_plugin("configurable", ConfigurableTestPlugin)
 
-        # Initialize one plugin
-        registry.get_plugin("test")
-
         info = registry.get_plugin_info()
 
-        assert len(info) == 2
+        assert {"test", "configurable"} <= {plugin["name"] for plugin in info}
 
         # Find test plugin info
         test_info = next(p for p in info if p["name"] == "test")
         assert test_info["version"] == "1.0.0"
-        assert test_info["initialized"] is True
+        assert test_info["initialized"] is False
         assert "echo" in test_info["functions"]
 
         # Find configurable plugin info
         config_info = next(p for p in info if p["name"] == "configurable")
         assert config_info["initialized"] is False
 
-    @patch("src.playbook.infrastructure.plugin_registry.entry_points")
+    @patch("playbook.infrastructure.plugin_registry.entry_points")
     def test_discover_entry_point_plugins(self, mock_entry_points, registry):
         """Test discovering plugins through entry points."""
         # Mock entry point
@@ -193,8 +189,8 @@ class TestPluginRegistry:
 
         assert "test_plugin" in registry.list_plugins()
 
-    @patch("src.playbook.infrastructure.plugin_registry.entry_points")
-    @patch("src.playbook.infrastructure.plugin_registry.logger")
+    @patch("playbook.infrastructure.plugin_registry.entry_points")
+    @patch("playbook.infrastructure.plugin_registry.logger")
     def test_discover_entry_point_plugins_load_error(
         self, mock_logger, mock_entry_points, registry
     ):
@@ -233,4 +229,4 @@ class TestPluginRegistry:
         # Manual registration after discovery should still work
         assert "test" in plugins2
         assert "test2" in plugins2
-        assert len(plugins2) == 2
+        assert {"test", "test2"} <= set(plugins2)

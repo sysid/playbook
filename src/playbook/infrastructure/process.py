@@ -62,7 +62,7 @@ class ShellProcessRunner(ProcessRunner):
                         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
 
                     # Reset terminal
-                    os.system("stty sane")
+                    subprocess.run(["stty", "sane"], check=False)
 
                     return 1, "", f"Command timed out after {timeout} seconds"
             else:

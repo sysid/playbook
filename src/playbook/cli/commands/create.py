@@ -1,212 +1,135 @@
-# src/playbook/cli/commands/create.py
-"""Create command implementation."""
+"""Create a schema-v2 runbook."""
 
-import datetime
+import re
 from pathlib import Path
-from typing import Optional
 
+import tomlkit
 import typer
 from rich.prompt import Confirm, Prompt
 
-from ..common import console, handle_error_and_exit
 from ...domain.exceptions import FileOperationError
+from ..common import console, handle_error_and_exit
 
 
 def create(
     ctx: typer.Context,
-    title: str = typer.Option(None, "--title", help="Runbook title"),
-    author: str = typer.Option(None, "--author", help="Author name"),
-    description: str = typer.Option(None, "--description", help="Runbook description"),
-    output: Optional[Path] = typer.Option(None, "--output", help="Output file path"),
-):
-    """Create a new runbook file interactively"""
+    title: str | None = typer.Option(None, "--title", help="Runbook title"),
+    author: str | None = typer.Option(None, "--author", help="Author name"),
+    description: str | None = typer.Option(
+        None,
+        "--description",
+        help="Runbook description",
+    ),
+    output: Path | None = typer.Option(None, "--output", help="Output file path"),
+) -> None:
+    """Create an ordered runbook interactively."""
     try:
         _create_runbook(title, author, description, output)
-    except Exception as e:
-        handle_error_and_exit(e, "Runbook creation", ctx.params.get("verbose", False))
+    except Exception as error:
+        handle_error_and_exit(
+            error,
+            "Runbook creation",
+            ctx.params.get("verbose", False),
+        )
 
 
 def _create_runbook(
-    title: Optional[str],
-    author: Optional[str],
-    description: Optional[str],
-    output: Optional[Path],
+    title: str | None,
+    author: str | None,
+    description: str | None,
+    output: Path | None,
 ) -> None:
-    """Internal runbook creation logic"""
-    # Get inputs interactively if not provided
-    if title is None:
-        title = Prompt.ask("Enter runbook title")
-
-    if author is None:
-        author = Prompt.ask("Enter author name")
-
-    if description is None:
-        description = Prompt.ask(
-            "Enter runbook description", default=f"Runbook for {title}"
-        )
-
-    # Set default output path if none provided
+    title = title or Prompt.ask("Enter runbook title")
+    author = author or Prompt.ask("Enter author name")
+    description = description or Prompt.ask(
+        "Enter runbook description",
+        default=f"Runbook for {title}",
+    )
+    workflow_id = _slug(title)
     if output is None:
-        default_filename = f"{title.lower().replace(' ', '_')}.playbook.toml"
-        output_str = Prompt.ask("Enter output file path", default=default_filename)
-        output = Path(output_str)
+        output = Path(
+            Prompt.ask(
+                "Enter output file path",
+                default=f"{workflow_id}.playbook.toml",
+            )
+        )
+    if output.exists() and not Confirm.ask(f"File {output} already exists. Overwrite?"):
+        return
 
-    # Check if file exists
-    if output.exists():
-        if not Confirm.ask(f"File {output} already exists. Overwrite?"):
-            return
+    document = tomlkit.document()
+    document.add("schema_version", tomlkit.item(2))
+    document.add(tomlkit.nl())
+    metadata = tomlkit.table()
+    metadata.add("id", workflow_id)
+    metadata.add("title", title)
+    metadata.add("description", description)
+    metadata.add("version", "0.1.0")
+    metadata.add("author", author)
+    document.add("runbook", metadata)
+    steps = tomlkit.aot()
 
-    # Create a template with runbook metadata
-    now = datetime.datetime.now(datetime.timezone.utc)
-
-    # Start with the basic runbook metadata
-    template = f"""[runbook]
-title       = "{title}"
-description = "{description}"
-version     = "0.1.0"
-author      = "{author}"
-created_at  = "{now.isoformat()}"
-"""
-
-    # Ask if user wants to add nodes
-    nodes = []
-    if Confirm.ask("Do you want to add manual nodes to your runbook?", default=True):
-        previous_node_id = None
-        node_counter = 1
-
-        # Interactive loop to add manual nodes
+    if Confirm.ask("Add workflow steps?", default=True):
         while True:
-            console.print("\n[bold blue]Adding a Manual Node[/bold blue]")
-
-            # Get node ID with default based on count
-            default_node_id = f"node{node_counter}"
-            node_id = Prompt.ask("Enter node ID", default=default_node_id)
-
-            # Get node name (optional)
-            node_name = Prompt.ask("Enter node name (optional)", default="")
-
-            # Get node description
-            default_description = f"Step {node_counter} of the workflow"
-            node_description = Prompt.ask(
-                "Enter node description", default=default_description
-            )
-
-            # Get prompt after
-            prompt_after = Prompt.ask(
-                "Enter prompt after message", default="Continue with the next step?"
-            )
-
-            # Get dependencies - default to previous node if exists
-            default_deps = f'"{previous_node_id}"' if previous_node_id else ""
-            depends_on_str = Prompt.ask(
-                "Enter dependencies (comma-separated IDs)", default=default_deps
-            )
-
-            # Parse dependencies from string
-            depends_on = []
-            if depends_on_str:
-                # Handle both quoted and unquoted node IDs
-                for dep in depends_on_str.split(","):
-                    dep = dep.strip().strip("\"'")
-                    if dep:  # Skip empty strings
-                        depends_on.append(dep)
-
-            # Get critical flag
-            critical = Confirm.ask(
-                "Is this node critical? (Failure will abort the workflow)",
-                default=False,
-            )
-
-            # Build node configuration
-            node = {
-                "id": node_id,
-                "name": node_name if node_name != node_id.capitalize() else None,
-                "description": node_description,
-                "prompt_after": prompt_after,
-                "depends_on": depends_on,
-                "critical": critical,
-                "type": "Manual",
-            }
-
-            nodes.append(node)
-
-            # Update for next iteration
-            previous_node_id = node_id
-            node_counter += 1
-
-            # Ask if user wants to add another node
-            if not Confirm.ask("Add another node?", default=True):
+            steps.append(_prompt_for_step())
+            if not Confirm.ask("Add another step?", default=True):
                 break
 
-        # Add nodes to template
-        for node in nodes:
-            node_section = f"""
-[{node["id"]}]
-type         = "{node["type"]}"
-"""
-            if node["name"]:
-                node_section += f'name         = "{node["name"]}"\n'
-
-            node_section += f'description  = """{node["description"]}"""\n'
-            node_section += f'prompt_after = "{node["prompt_after"]}"\n'
-
-            if node["depends_on"]:
-                depends_str = ", ".join([f'"{dep}"' for dep in node["depends_on"]])
-                node_section += f"depends_on   = [{depends_str}]\n"
-            else:
-                node_section += "depends_on   = []\n"
-
-            node_section += f"critical     = {str(node['critical']).lower()}\n"
-
-            template += node_section
-
-    # Add example nodes as comments if no manual nodes were added
-    if not any(node["type"] == "Manual" for node in nodes):
-        template += """
-# Example manual node - uncomment to use
-# [approve]
-# type         = "Manual"
-# prompt_after = "Proceed with deployment?"
-# description  = \"\"\"This step requires manual approval before proceeding.
-# Please review the changes and confirm.\"\"\"
-# depends_on  = []
-# critical    = true
-
-# Example command node - uncomment to use
-# [build]
-# type         = "Command"
-# command_name = "echo 'Hello, World!'"
-# description  = "Builds the project artifacts"
-# depends_on   = []
-# timeout      = 300
-# name         = "Build step"
-# skip         = true
-
-# Example function node - uncomment to use
-# [notify]
-# type           = "Function"
-# function_name  = "playbook.functions.notify"
-# function_params = {{ "message" = "Deployment complete" }}
-# description    = "Sends deployment completion notification"
-# depends_on     = []
-"""
-
-    # Write the template to file
+    document.add(tomlkit.nl())
+    document.add("steps", steps if steps else tomlkit.item([]))
     try:
         output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_text(template)
-    except PermissionError:
+        output.write_text(tomlkit.dumps(document))
+    except OSError as error:
         raise FileOperationError(
-            f"Permission denied writing to: {output}",
-            suggestion="Check file permissions or try a different location",
-        )
-    except Exception as e:
-        raise FileOperationError(
-            f"Failed to create runbook file: {str(e)}",
-            context={"output_path": str(output)},
-            suggestion="Check disk space and file permissions",
-        )
+            f"Failed to create runbook file: {error}",
+            suggestion="Check the path and file permissions",
+        ) from error
+    console.print(f"Created new runbook at {output}")
+    console.print("Run 'playbook validate' before executing it.")
 
-    console.print(f"[bold green]Created new runbook at {output}[/bold green]")
-    console.print("\nEdit this file to add more nodes or customize the workflow.")
-    console.print("Use 'playbook validate' to check your runbook for correctness.")
+
+def _prompt_for_step():
+    step_type = Prompt.ask(
+        "Step type",
+        choices=["manual", "command", "function"],
+        default="manual",
+    )
+    step = tomlkit.table()
+    step.add("id", Prompt.ask("Step ID"))
+    step.add("type", step_type)
+    name = Prompt.ask("Step name", default="")
+    if name:
+        step.add("name", name)
+    instructions = Prompt.ask("Instructions", default="")
+    if instructions:
+        step.add("instructions", instructions)
+
+    if step_type == "manual":
+        step.add("prompt", Prompt.ask("Completion prompt", default="Done?"))
+    elif step_type == "command":
+        step.add("command", Prompt.ask("Command"))
+        if Confirm.ask("Interactive command?", default=False):
+            step.add("interactive", True)
+        step.add(
+            "timeout_seconds",
+            int(Prompt.ask("Timeout in seconds", default="300")),
+        )
+        verify = Prompt.ask("Verification prompt", default="")
+        if verify:
+            step.add("verify", verify)
+    else:
+        step.add("plugin", Prompt.ask("Plugin", default="python"))
+        step.add("function", Prompt.ask("Function"))
+        if Confirm.ask("Add plugin parameters later?", default=True):
+            step.add("params", {})
+        verify = Prompt.ask("Verification prompt", default="")
+        if verify:
+            step.add("verify", verify)
+
+    step.add("required", Confirm.ask("Required step?", default=True))
+    return step
+
+
+def _slug(value: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
+    return slug or "workflow"

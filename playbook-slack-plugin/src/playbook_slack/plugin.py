@@ -164,14 +164,18 @@ class SlackPlugin(Plugin):
                         ),
                     },
                     returns=ReturnDef(
-                        type="dict", description="Response from Slack channel creation API"
+                        type="dict",
+                        description="Response from Slack channel creation API",
                     ),
                     examples=[
                         {
                             "name": "project-alpha",
                             "is_private": False,
                             "purpose": "Discussion for Project Alpha",
-                            "expected_result": {"ok": True, "channel": {"id": "C123456", "name": "project-alpha"}},
+                            "expected_result": {
+                                "ok": True,
+                                "channel": {"id": "C123456", "name": "project-alpha"},
+                            },
                         }
                     ],
                 ),
@@ -281,7 +285,9 @@ class SlackPlugin(Plugin):
         except Exception as e:
             if isinstance(e, PluginExecutionError):
                 raise
-            raise PluginExecutionError(f"Failed to execute function {function_name}: {e}")
+            raise PluginExecutionError(
+                f"Failed to execute function {function_name}: {e}"
+            )
 
     def _send_message(
         self,
@@ -293,7 +299,9 @@ class SlackPlugin(Plugin):
     ) -> Dict[str, Any]:
         """Send a message to Slack via webhook."""
         if not self._webhook_url:
-            raise PluginExecutionError("webhook_url is required for send_message function")
+            raise PluginExecutionError(
+                "webhook_url is required for send_message function"
+            )
 
         # Build message payload
         payload = {"text": text}
@@ -379,9 +387,13 @@ class SlackPlugin(Plugin):
 
                 result = response.json()
                 if not result.get("ok"):
-                    raise PluginExecutionError(f"Slack API error: {result.get('error', 'Unknown error')}")
+                    raise PluginExecutionError(
+                        f"Slack API error: {result.get('error', 'Unknown error')}"
+                    )
 
-                logger.debug(f"File uploaded to Slack: {result.get('file', {}).get('id')}")
+                logger.debug(
+                    f"File uploaded to Slack: {result.get('file', {}).get('id')}"
+                )
                 return result
 
         except (OSError, IOError) as e:
@@ -400,7 +412,9 @@ class SlackPlugin(Plugin):
     ) -> Dict[str, Any]:
         """Create a new Slack channel via API."""
         if not self._bot_token:
-            raise PluginExecutionError("bot_token is required for create_channel function")
+            raise PluginExecutionError(
+                "bot_token is required for create_channel function"
+            )
 
         # Choose the appropriate API endpoint
         endpoint = "conversations.create"
@@ -431,7 +445,9 @@ class SlackPlugin(Plugin):
                 if error == "name_taken":
                     raise PluginExecutionError(f"Channel '{name}' already exists")
                 elif error == "invalid_name":
-                    raise PluginExecutionError(f"Invalid channel name '{name}'. Use lowercase letters, numbers, hyphens, and underscores only")
+                    raise PluginExecutionError(
+                        f"Invalid channel name '{name}'. Use lowercase letters, numbers, hyphens, and underscores only"
+                    )
                 else:
                     raise PluginExecutionError(f"Slack API error: {error}")
 

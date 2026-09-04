@@ -3,7 +3,7 @@
 
 from typing import Any, Dict
 
-from src.playbook.domain.plugins import (
+from playbook.domain.plugins import (
     Plugin,
     PluginMetadata,
     FunctionSignature,

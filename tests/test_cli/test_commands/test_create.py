@@ -1,6 +1,8 @@
 # tests/test_cli/test_commands/test_create.py
 """Tests for the create command."""
 
+import tomllib
+
 from playbook.cli.main import app
 
 
@@ -24,16 +26,17 @@ class TestCreateCommand:
                 "--output",
                 str(output_file),
             ],
-            input="n\n",  # Don't add manual nodes
+            input="n\n",
         )
 
         assert result.exit_code == 0
         assert output_file.exists()
 
-        content = output_file.read_text()
-        assert "Test Workflow" in content
-        assert "Test Author" in content
-        assert "Test Description" in content
+        content = tomllib.loads(output_file.read_text())
+        assert content["schema_version"] == 2
+        assert content["runbook"]["id"] == "test-workflow"
+        assert content["runbook"]["title"] == "Test Workflow"
+        assert content["steps"] == []
 
     def test_create_interactive_mode(self, cli_runner, temp_dir):
         """Test create command in interactive mode."""
@@ -45,7 +48,7 @@ class TestCreateCommand:
             "Interactive Author",  # author
             "Interactive Description",  # description
             str(output_file),  # output path
-            "n",  # don't add manual nodes
+            "n",
         ]
 
         result = cli_runner.invoke(app, ["create"], input="\n".join(inputs))
@@ -53,24 +56,44 @@ class TestCreateCommand:
         assert result.exit_code == 0
         assert output_file.exists()
 
-    def test_create_with_manual_nodes(self, cli_runner, temp_dir):
-        """Test create command with manual nodes."""
-        output_file = temp_dir / "with_nodes.playbook.toml"
+    def test_create_supports_all_step_types(self, cli_runner, temp_dir):
+        """Create can configure manual, command, and function steps."""
+        output_file = temp_dir / "with_steps.playbook.toml"
 
         # Simulate adding one manual node
         inputs = [
-            "Node Workflow",  # title
-            "Node Author",  # author
-            "Node Description",  # description
-            str(output_file),  # output path
-            "y",  # add manual nodes
-            "node1",  # node id
-            "First Node",  # node name
-            "First step description",  # node description
-            "Continue?",  # prompt after
-            "",  # dependencies (empty)
-            "y",  # critical
-            "n",  # don't add another node
+            "Node Workflow",
+            "Node Author",
+            "Node Description",
+            str(output_file),
+            "y",
+            "manual",
+            "review",
+            "Review",
+            "Review the change",
+            "Approved?",
+            "y",
+            "y",
+            "command",
+            "deploy",
+            "Deploy",
+            "Deploy the change",
+            "echo deploy",
+            "n",
+            "60",
+            "",
+            "y",
+            "y",
+            "function",
+            "notify",
+            "Notify",
+            "Notify the team",
+            "python",
+            "notify",
+            "n",
+            "",
+            "n",
+            "n",
         ]
 
         result = cli_runner.invoke(app, ["create"], input="\n".join(inputs))
@@ -78,9 +101,14 @@ class TestCreateCommand:
         assert result.exit_code == 0
         assert output_file.exists()
 
-        content = output_file.read_text()
-        assert "[node1]" in content
-        assert "First Node" in content
+        content = tomllib.loads(output_file.read_text())
+        assert [step["type"] for step in content["steps"]] == [
+            "manual",
+            "command",
+            "function",
+        ]
+        assert content["steps"][1]["command"] == "echo deploy"
+        assert content["steps"][2]["plugin"] == "python"
 
     def test_create_file_exists_overwrite_no(self, cli_runner, temp_dir):
         """Test create command when file exists and user chooses not to overwrite."""

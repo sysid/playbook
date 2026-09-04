@@ -3,7 +3,7 @@
 
 import pytest
 
-from src.playbook.domain.plugins import (
+from playbook.domain.plugins import (
     ParameterDef,
     FunctionSignature,
     PluginMetadata,

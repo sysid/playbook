@@ -22,7 +22,6 @@ class PluginRegistry:
     ENTRY_POINT_GROUP = "playbook.plugins"
 
     def __init__(self) -> None:
-        self._plugins: Dict[str, Plugin] = {}
         self._plugin_classes: Dict[str, Type[Plugin]] = {}
         self._initialized = False
 
@@ -76,6 +75,9 @@ class PluginRegistry:
         if not issubclass(plugin_class, Plugin):
             raise ValueError("Plugin class must inherit from Plugin")
 
+        existing = self._plugin_classes.get(name)
+        if existing is not None and existing is not plugin_class:
+            raise ValueError(f"Plugin '{name}' is already registered")
         self._plugin_classes[name] = plugin_class
         logger.debug(f"Manually registered plugin: {name}")
 
@@ -96,10 +98,6 @@ class PluginRegistry:
         if not self._initialized:
             self.discover_plugins()
 
-        # Return cached instance if available
-        if name in self._plugins:
-            return self._plugins[name]
-
         # Create new instance
         if name not in self._plugin_classes:
             raise PluginNotFoundError(f"Plugin '{name}' not found")
@@ -111,8 +109,6 @@ class PluginRegistry:
             # Initialize with config
             plugin_instance.initialize(config or {})
 
-            # Cache the instance
-            self._plugins[name] = plugin_instance
             logger.debug(f"Initialized plugin: {name}")
 
             return plugin_instance
@@ -162,14 +158,7 @@ class PluginRegistry:
 
     def cleanup_all(self) -> None:
         """Clean up all initialized plugins."""
-        for name, plugin in self._plugins.items():
-            try:
-                plugin.cleanup()
-                logger.debug(f"Cleaned up plugin: {name}")
-            except Exception as e:
-                logger.error(f"Failed to cleanup plugin {name}: {e}")
-
-        self._plugins.clear()
+        # Instances are scoped to a single step and cleaned up by the engine.
 
     def reload_plugin(self, name: str, config: Optional[Dict] = None) -> Plugin:
         """Reload a plugin instance.
@@ -184,15 +173,6 @@ class PluginRegistry:
         Raises:
             PluginNotFoundError: If plugin not found
         """
-        # Cleanup existing instance
-        if name in self._plugins:
-            try:
-                self._plugins[name].cleanup()
-            except Exception as e:
-                logger.warning(f"Failed to cleanup plugin {name} during reload: {e}")
-            del self._plugins[name]
-
-        # Get fresh instance
         return self.get_plugin(name, config)
 
     def get_plugin_info(self) -> List[Dict]:
@@ -214,7 +194,7 @@ class PluginRegistry:
                     "author": metadata.author,
                     "description": metadata.description,
                     "functions": list(metadata.functions.keys()),
-                    "initialized": name in self._plugins,
+                    "initialized": False,
                 }
                 plugin_info.append(info)
             except Exception as e:

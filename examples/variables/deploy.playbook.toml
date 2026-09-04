@@ -1,63 +1,48 @@
-# Simple deployment workflow with variables
+schema_version = 2
+
 [variables]
 APP_NAME = { default = "myapp", description = "Application name" }
-ENVIRONMENT = { required = true, choices = ["dev", "staging", "prod"], description = "Target environment" }
-VERSION = { default = "latest", description = "Version to deploy" }
-TIMEOUT = { default = 300, type = "int", description = "Command timeout in seconds" }
+ENVIRONMENT = { required = true, choices = ["dev", "staging", "prod"] }
+VERSION = { default = "latest", description = "Application version" }
+RUN_SECURITY = { default = true, type = "bool" }
+API_KEY = { required = true, secret = true }
 
 [runbook]
-title = "Deploy {{APP_NAME}}"
-description = """
-Comprehensive deployment workflow for {{APP_NAME}} version {{VERSION}} to {{ENVIRONMENT}}.
-This workflow handles the complete deployment lifecycle including pre-deployment validation,
-service deployment with monitoring, health verification, and stakeholder notification.
-"""
-version = "1.0.0"
-author = "devops"
-created_at = "2025-01-20T12:00:00Z"
+id = "deploy-application"
+title = "Deploy {{ APP_NAME }}"
+description = "Guide an operator through a sample deployment."
+version = "2.0.0"
+author = "DevOps"
 
-[pre_deploy_check]
-type = "Manual"
-prompt_after = "Ready to deploy {{APP_NAME}} {{VERSION}} to {{ENVIRONMENT}}? This will affect the {{ENVIRONMENT}} environment."
-description = """
-Pre-deployment confirmation step that ensures all prerequisites are met.
-This manual checkpoint allows for final review of deployment parameters,
-verification of system readiness, and abort if conditions are not optimal.
-"""
-depends_on = []
+[[steps]]
+id = "review"
+type = "manual"
+name = "Review deployment"
+instructions = "Review {{ APP_NAME }} version {{ VERSION }} for {{ ENVIRONMENT }}."
+prompt = "Are the change and rollback plans approved?"
 
-[deploy_application]
-type = "Command"
-command_name = "docker run --rm -v $(pwd):/workspace deploy-tool:latest deploy --app={{APP_NAME}} --version={{VERSION}} --env={{ENVIRONMENT}} --timeout={{TIMEOUT}}"
-description = """
-Deploy {{APP_NAME}} version {{VERSION}} to the {{ENVIRONMENT}} environment.
-This step handles container deployment, service updates, configuration changes,
-and ensures proper rollout strategy with monitoring for any issues.
-"""
-timeout = "{{TIMEOUT}}"
-depends_on = ["pre_deploy_check"]
+[[steps]]
+id = "security-review"
+type = "command"
+name = "Run security review"
+instructions = "Run the example read-only security check."
+command = "printf 'Security review for %s\\n' '{{ APP_NAME }}'"
+enabled_if = "RUN_SECURITY"
+verify = "Did the security review pass?"
 
-[health_check]
-type = "Command"
-command_name = "curl -f https://{{APP_NAME}}-{{ENVIRONMENT}}.company.com/health || exit 1"
-description = """
-Perform comprehensive health check for {{APP_NAME}} in {{ENVIRONMENT}}.
-Validates service endpoints, database connectivity, external dependencies,
-and ensures the application is fully operational before proceeding.
-"""
-timeout = 60
-depends_on = ["deploy_application"]
+[[steps]]
+id = "deploy"
+type = "command"
+name = "Run example deployment"
+instructions = "This example only prints the intended deployment."
+command = "printf 'Deploy %s version %s to %s\\n' '{{ APP_NAME }}' '{{ VERSION }}' '{{ ENVIRONMENT }}'"
+verify = "Does the printed deployment target match the approved change?"
 
-[post_deploy_notification]
-type = "Function"
+[[steps]]
+id = "notify"
+type = "function"
+name = "Record completion"
+instructions = "Emit a local completion notification."
 plugin = "python"
 function = "notify"
-description = """
-Send deployment completion notification to relevant teams and stakeholders.
-Includes deployment summary, version information, environment details,
-and links to monitoring dashboards for post-deployment tracking.
-"""
-depends_on = ["health_check"]
-
-[post_deploy_notification.function_params]
-message = "✅ Successfully deployed {{APP_NAME}} {{VERSION}} to {{ENVIRONMENT}}"
+params = { message = "Deployed {{ APP_NAME }} {{ VERSION }} to {{ ENVIRONMENT }}" }

@@ -1,23 +1,26 @@
-# src/playbook/domain/models.py
+from __future__ import annotations
+
 from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Optional, Union, Literal, Any
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, Field, RootModel, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
-class NodeType(str, Enum):
-    MANUAL = "Manual"
-    FUNCTION = "Function"
-    COMMAND = "Command"
+class StepType(str, Enum):
+    MANUAL = "manual"
+    COMMAND = "command"
+    FUNCTION = "function"
 
 
 class NodeStatus(str, Enum):
     OK = "ok"
     NOK = "nok"
     SKIPPED = "skipped"
+    DISABLED = "disabled"
     PENDING = "pending"
     RUNNING = "running"
+    ABORTED = "aborted"
 
 
 class RunStatus(str, Enum):
@@ -32,69 +35,143 @@ class TriggerType(str, Enum):
     RESUME = "resume"
 
 
-class BaseNode(BaseModel):
+class BaseStep(BaseModel):
     id: str
-    type: NodeType
-    depends_on: Union[str, List[str]] = Field(default_factory=lambda: [])
-    critical: bool = False
-    name: Optional[str] = None
-    description: Optional[str] = None
-    prompt_before: str = ""
-    prompt_after: str = "Continue with the next step?"  # "" for no prompt
-    skip: bool = False
-    when: str = "true"  # Conditional execution clause, defaults to always execute
+    type: StepType
+    name: str | None = None
+    instructions: str | None = None
+    required: bool = True
+    enabled: bool = True
+    enabled_if: str | None = None
 
-    @model_validator(mode="before")
+    model_config = {"extra": "forbid"}
+
+    @field_validator("id")
     @classmethod
-    def normalize_depends_on(cls, values: Any) -> Any:
-        """Normalize depends_on to always be a list internally."""
-        if isinstance(values, dict) and "depends_on" in values:
-            depends_on = values["depends_on"]
-            if isinstance(depends_on, str):
-                values["depends_on"] = [depends_on] if depends_on else []
-        return values
+    def validate_id(cls, value: str) -> str:
+        if not value or not all(
+            character.isalnum() or character in "_-" for character in value
+        ):
+            raise ValueError("step id must contain only letters, numbers, '_' or '-'")
+        return value
 
 
-class ManualNode(BaseNode):
-    type: Literal[NodeType.MANUAL] = NodeType.MANUAL
-    timeout: int = 300  # Default timeout in seconds
-
-    model_config = {"extra": "forbid"}
-
-
-class FunctionNode(BaseNode):
-    type: Literal[NodeType.FUNCTION] = NodeType.FUNCTION
-    # Plugin-based function execution
-    plugin: str
-    function: str  # Function name within plugin
-    function_params: Dict[str, Any] = Field(default_factory=dict)
-    # Plugin configuration overrides
-    plugin_config: Dict[str, Any] = Field(default_factory=dict)
-
-    model_config = {"extra": "forbid"}
+class ManualStep(BaseStep):
+    type: Literal[StepType.MANUAL] = StepType.MANUAL
+    instructions: str
+    prompt: str = "Done?"
 
 
-class CommandNode(BaseNode):
-    type: Literal[NodeType.COMMAND] = NodeType.COMMAND
-    command_name: str
+class CommandStep(BaseStep):
+    type: Literal[StepType.COMMAND] = StepType.COMMAND
+    command: str
     interactive: bool = False
-    timeout: int = 300  # Default timeout in seconds
+    timeout_seconds: int = Field(default=300, gt=0)
+    verify: str | None = None
+
+
+class FunctionStep(BaseStep):
+    type: Literal[StepType.FUNCTION] = StepType.FUNCTION
+    plugin: str
+    function: str
+    params: dict[str, Any] = Field(default_factory=dict)
+    config: dict[str, Any] = Field(default_factory=dict)
+    verify: str | None = None
+
+
+Step = Annotated[
+    ManualStep | CommandStep | FunctionStep,
+    Field(discriminator="type"),
+]
+
+
+class VariableDefinition(BaseModel):
+    default: Any | None = None
+    required: bool = False
+    type: Literal["string", "int", "float", "bool", "list"] = "string"
+    choices: list[Any] | None = None
+    description: str | None = None
+    min: int | float | None = None
+    max: int | float | None = None
+    pattern: str | None = None
+    secret: bool = False
 
     model_config = {"extra": "forbid"}
 
+    @field_validator("choices")
+    @classmethod
+    def validate_choices(cls, value: list[Any] | None, info: Any) -> list[Any] | None:
+        if value is None or "type" not in info.data:
+            return value
+        variable_type = info.data["type"]
+        if variable_type == "int" and any(
+            not isinstance(choice, int) or isinstance(choice, bool) for choice in value
+        ):
+            invalid = next(
+                choice
+                for choice in value
+                if not isinstance(choice, int) or isinstance(choice, bool)
+            )
+            raise ValueError(f"choice {invalid!r} is not an integer")
+        if variable_type == "float" and any(
+            not isinstance(choice, (int, float)) or isinstance(choice, bool)
+            for choice in value
+        ):
+            raise ValueError("all choices must be numbers")
+        if variable_type == "bool" and any(
+            not isinstance(choice, bool) for choice in value
+        ):
+            raise ValueError("all choices must be booleans")
+        return value
 
-# Replace Node class with RootModel
-class Node(RootModel):
-    root: Union[ManualNode, FunctionNode, CommandNode]
+    @field_validator("min", "max")
+    @classmethod
+    def validate_min_max(
+        cls, value: int | float | None, info: Any
+    ) -> int | float | None:
+        if value is not None and info.data.get("type") not in ("int", "float"):
+            raise ValueError("min/max can only be used with int or float types")
+        return value
 
 
 class Runbook(BaseModel):
+    schema_version: Literal[2] = 2
+    id: str
     title: str
-    description: str
-    version: str
-    author: str
-    created_at: datetime
-    nodes: Dict[str, Union[ManualNode, FunctionNode, CommandNode]]
+    description: str = ""
+    version: str | None = None
+    author: str | None = None
+    steps: list[Step]
+    variable_definitions: dict[str, VariableDefinition] = Field(default_factory=dict)
+    variables: dict[str, Any] = Field(default_factory=dict)
+    source_path: str
+    definition_hash: str
+
+    @model_validator(mode="after")
+    def validate_steps(self) -> Runbook:
+        seen: set[str] = set()
+        for step in self.steps:
+            if step.id in seen:
+                raise ValueError(f"Duplicate step id '{step.id}'")
+            seen.add(step.id)
+            if step.enabled_if is None:
+                continue
+            definition = self.variable_definitions.get(step.enabled_if)
+            if definition is None:
+                raise ValueError(
+                    f"Step '{step.id}' enabled_if references unknown variable "
+                    f"'{step.enabled_if}'"
+                )
+            if definition.secret:
+                raise ValueError(
+                    f"Step '{step.id}' enabled_if cannot reference secret variable "
+                    f"'{step.enabled_if}'"
+                )
+            if definition.type != "bool":
+                raise ValueError(
+                    f"Step '{step.id}' enabled_if must reference a bool variable"
+                )
+        return self
 
 
 class NodeExecution(BaseModel):
@@ -103,67 +180,27 @@ class NodeExecution(BaseModel):
     node_id: str
     attempt: int
     start_time: datetime
-    end_time: Optional[datetime] = None
+    end_time: datetime | None = None
     status: NodeStatus
-    operator_decision: Optional[str] = None
-    result_text: Optional[str] = None
-    exit_code: Optional[int] = None
-    exception: Optional[str] = None
-    stdout: Optional[str] = None
-    stderr: Optional[str] = None
-    duration_ms: Optional[int] = None
+    operator_decision: str | None = None
+    result_text: str | None = None
+    exit_code: int | None = None
+    exception: str | None = None
+    stdout: str | None = None
+    stderr: str | None = None
+    duration_ms: int | None = None
 
 
 class RunInfo(BaseModel):
     workflow_name: str
     run_id: int
     start_time: datetime
-    end_time: Optional[datetime] = None
+    end_time: datetime | None = None
     status: RunStatus
     nodes_ok: int = 0
     nodes_nok: int = 0
     nodes_skipped: int = 0
     trigger: TriggerType
-
-
-class VariableDefinition(BaseModel):
-    """Variable definition schema for workflow variables."""
-
-    default: Optional[Any] = None
-    required: bool = False
-    type: Literal["string", "int", "float", "bool", "list"] = "string"
-    choices: Optional[List[Any]] = None
-    description: Optional[str] = None
-    min: Optional[Union[int, float]] = None
-    max: Optional[Union[int, float]] = None
-    pattern: Optional[str] = None  # Regex pattern for strings
-
-    @field_validator("choices")
-    @classmethod
-    def validate_choices(cls, v, info):
-        """Ensure choices match the variable type."""
-        if v is not None and "type" in info.data:
-            var_type = info.data["type"]
-            if var_type == "int":
-                for choice in v:
-                    if not isinstance(choice, int):
-                        raise ValueError(f"Choice '{choice}' is not an integer")
-            elif var_type == "float":
-                for choice in v:
-                    if not isinstance(choice, (int, float)):
-                        raise ValueError(f"Choice '{choice}' is not a number")
-            elif var_type == "bool":
-                for choice in v:
-                    if not isinstance(choice, bool):
-                        raise ValueError(f"Choice '{choice}' is not a boolean")
-        return v
-
-    @field_validator("min", "max")
-    @classmethod
-    def validate_min_max(cls, v, info):
-        """Ensure min/max are only used with numeric types."""
-        if v is not None and "type" in info.data:
-            var_type = info.data["type"]
-            if var_type not in ["int", "float"]:
-                raise ValueError("min/max can only be used with int or float types")
-        return v
+    source_path: str
+    definition_hash: str
+    variables: dict[str, Any] = Field(default_factory=dict)

@@ -5,8 +5,17 @@ from pathlib import Path
 
 import pytest
 
-from playbook.domain.models import NodeExecution, NodeStatus
-from playbook.infrastructure.persistence import SQLiteNodeExecutionRepository
+from playbook.domain.models import (
+    NodeExecution,
+    NodeStatus,
+    RunInfo,
+    RunStatus,
+    TriggerType,
+)
+from playbook.infrastructure.persistence import (
+    SQLiteNodeExecutionRepository,
+    SQLiteRunRepository,
+)
 
 
 class TestSQLiteNodeExecutionRepository:
@@ -18,6 +27,24 @@ class TestSQLiteNodeExecutionRepository:
 
         repo = SQLiteNodeExecutionRepository(db_path)
         repo._init_db()
+        run_repo = SQLiteRunRepository(db_path)
+        for workflow_name, run_count in (
+            ("test_workflow", 2),
+            ("workflow_a", 1),
+            ("workflow_b", 1),
+        ):
+            for _ in range(run_count):
+                run_repo.create_run(
+                    RunInfo(
+                        workflow_name=workflow_name,
+                        run_id=0,
+                        start_time=datetime.now(timezone.utc),
+                        status=RunStatus.RUNNING,
+                        trigger=TriggerType.RUN,
+                        source_path=f"/runbooks/{workflow_name}.playbook.toml",
+                        definition_hash="abc",
+                    )
+                )
 
         yield repo
 
