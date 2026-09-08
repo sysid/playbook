@@ -1,6 +1,6 @@
 # Examples
 
-All examples use schema version 2 and execute `[[steps]]` in file order.
+All examples use schema version 3 and execute `[[steps]]` in file order.
 
 - `simple_bash_commands.playbook.toml`: manual preparation, a command, and
   operator verification.

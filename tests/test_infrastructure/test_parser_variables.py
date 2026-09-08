@@ -11,7 +11,7 @@ from playbook.infrastructure.variables import VariableManager, VariableValidatio
 def write_runbook(path: Path, variables: str, steps: str) -> Path:
     path.write_text(
         f"""
-schema_version = 2
+schema_version = 3
 
 [variables]
 {variables}

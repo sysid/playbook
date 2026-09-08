@@ -18,7 +18,7 @@ def cli_runner():
 def sample_toml_content():
     """Sample TOML content for testing."""
     return """
-schema_version = 2
+schema_version = 3
 
 [runbook]
 id = "test-workflow"

@@ -1,4 +1,4 @@
-schema_version = 2
+schema_version = 3
 
 [variables]
 APP_NAME = { default = "demo-app", description = "Application name" }

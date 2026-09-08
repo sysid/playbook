@@ -4,6 +4,7 @@ import pytest
 
 from playbook.domain.models import CommandStep, ManualStep
 from playbook.infrastructure.parser import RunbookParser
+from playbook.infrastructure.variables import VariableManager
 
 
 def write_runbook(tmp_path: Path, content: str) -> Path:
@@ -16,7 +17,7 @@ def test_parse_whenOrderedSteps_thenPreservesFileOrder(tmp_path: Path) -> None:
     path = write_runbook(
         tmp_path,
         """
-schema_version = 2
+schema_version = 3
 
 [runbook]
 id = "daily"
@@ -49,7 +50,7 @@ def test_parse_whenDuplicateStepId_thenRejectsRunbook(tmp_path: Path) -> None:
     path = write_runbook(
         tmp_path,
         """
-schema_version = 2
+schema_version = 3
 
 [runbook]
 id = "daily"
@@ -71,27 +72,7 @@ instructions = "Second."
         RunbookParser().parse(path)
 
 
-def test_parse_whenVersionOneInput_thenPointsToMigrator(tmp_path: Path) -> None:
-    path = write_runbook(
-        tmp_path,
-        """
-[runbook]
-title = "Legacy"
-description = "Old format"
-version = "1"
-author = "Tom"
-created_at = "2025-01-01T00:00:00"
-
-[first]
-type = "Manual"
-""",
-    )
-
-    with pytest.raises(ValueError, match=r"playbook migrate"):
-        RunbookParser().parse(path)
-
-
-def test_parse_whenEnabledIfReferencesSecret_thenRejectsRunbook(
+def test_parse_whenSchemaVersionIsTwo_thenNamesTheReplacementField(
     tmp_path: Path,
 ) -> None:
     path = write_runbook(
@@ -103,52 +84,120 @@ schema_version = 2
 id = "daily"
 title = "Daily"
 
-[variables.RUN_SECURITY]
-type = "bool"
-default = false
-secret = true
-
 [[steps]]
-id = "security"
+id = "check"
 type = "command"
 command = "true"
 enabled_if = "RUN_SECURITY"
 """,
     )
 
-    with pytest.raises(ValueError, match="cannot reference secret variable"):
+    with pytest.raises(ValueError, match="enabled_if_command"):
         RunbookParser().parse(path)
 
 
-def test_parse_whenEnabledIfIsNotBoolean_thenRejectsRunbook(tmp_path: Path) -> None:
+def test_parse_whenSchemaVersionIsMissing_thenReportsRequiredVersion(
+    tmp_path: Path,
+) -> None:
     path = write_runbook(
         tmp_path,
         """
-schema_version = 2
+[runbook]
+title = "Legacy"
+version = "1"
+
+[first]
+type = "Manual"
+""",
+    )
+
+    with pytest.raises(ValueError, match="schema_version = 3"):
+        RunbookParser().parse(path)
+
+
+def test_parse_whenStepIsGuarded_thenKeepsCommandAndTimeout(tmp_path: Path) -> None:
+    path = write_runbook(
+        tmp_path,
+        """
+schema_version = 3
 
 [runbook]
 id = "daily"
 title = "Daily"
 
-[variables.ENVIRONMENT]
-type = "string"
-default = "test"
-
 [[steps]]
-id = "deploy"
+id = "rollback"
 type = "command"
-command = "true"
-enabled_if = "ENVIRONMENT"
+command = "./rollback"
+enabled_if_command = "test -f /var/run/deploy.lock"
+enabled_if_timeout_seconds = 5
 """,
     )
 
-    with pytest.raises(ValueError, match="must reference a bool variable"):
-        RunbookParser().parse(path)
+    runbook = RunbookParser().parse(path)
+
+    assert runbook.steps[0].enabled_if_command == "test -f /var/run/deploy.lock"
+    assert runbook.steps[0].enabled_if_timeout_seconds == 5
+
+
+def test_parse_whenGuardUsesVariable_thenSubstitutesIt(tmp_path: Path) -> None:
+    path = write_runbook(
+        tmp_path,
+        """
+schema_version = 3
+
+[variables]
+LOCK_FILE = { default = "/var/run/deploy.lock" }
+
+[runbook]
+id = "daily"
+title = "Daily"
+
+[[steps]]
+id = "rollback"
+type = "command"
+command = "./rollback"
+enabled_if_command = "test -f {{ LOCK_FILE }}"
+""",
+    )
+
+    runbook = RunbookParser(VariableManager(interactive=False)).parse(path)
+
+    assert runbook.steps[0].enabled_if_command == "test -f /var/run/deploy.lock"
+
+
+def test_parse_whenGuardComparesBoolean_thenRendersPythonCapitalisation(
+    tmp_path: Path,
+) -> None:
+    """A rendered bool is 'True', not 'true'; guards must compare against that."""
+    path = write_runbook(
+        tmp_path,
+        """
+schema_version = 3
+
+[variables]
+RUN_SECURITY = { type = "bool", default = true }
+
+[runbook]
+id = "daily"
+title = "Daily"
+
+[[steps]]
+id = "security"
+type = "command"
+command = "./security-review"
+enabled_if_command = "test '{{ RUN_SECURITY }}' = 'True'"
+""",
+    )
+
+    runbook = RunbookParser(VariableManager(interactive=False)).parse(path)
+
+    assert runbook.steps[0].enabled_if_command == "test 'True' = 'True'"
 
 
 def test_parse_rejects_wrong_extension_and_invalid_toml(tmp_path: Path) -> None:
     wrong_extension = tmp_path / "workflow.toml"
-    wrong_extension.write_text("schema_version = 2")
+    wrong_extension.write_text("schema_version = 3")
     with pytest.raises(ValueError, match=r"\.playbook\.toml extension"):
         RunbookParser().parse(wrong_extension)
 
@@ -160,18 +209,18 @@ def test_parse_rejects_wrong_extension_and_invalid_toml(tmp_path: Path) -> None:
 @pytest.mark.parametrize(
     ("content", "message"),
     [
-        ("schema_version = 2\nsteps = []", r"Missing required \[runbook\]"),
+        ("schema_version = 3\nsteps = []", r"Missing required \[runbook\]"),
         (
-            'schema_version = 2\n[runbook]\nid = "x"\ntitle = "X"',
+            'schema_version = 3\n[runbook]\nid = "x"\ntitle = "X"',
             r"Missing required \[\[steps\]\]",
         ),
         (
-            'schema_version = 2\nvariables = []\n[runbook]\nid = "x"\ntitle = "X"\nsteps = []',
+            'schema_version = 3\nvariables = []\n[runbook]\nid = "x"\ntitle = "X"\nsteps = []',
             r"\[variables\] must be a table",
         ),
     ],
 )
-def test_parse_reports_missing_v2_structure(
+def test_parse_reports_missing_structure(
     tmp_path: Path,
     content: str,
     message: str,
@@ -182,11 +231,11 @@ def test_parse_reports_missing_v2_structure(
         RunbookParser().parse(path)
 
 
-def test_parse_rejects_enabled_if_unknown_variable(tmp_path: Path) -> None:
+def test_parse_rejects_unknown_step_field(tmp_path: Path) -> None:
     path = write_runbook(
         tmp_path,
         """
-schema_version = 2
+schema_version = 3
 [runbook]
 id = "daily"
 title = "Daily"
@@ -198,5 +247,5 @@ enabled_if = "UNKNOWN"
 """,
     )
 
-    with pytest.raises(ValueError, match="references unknown variable"):
+    with pytest.raises(ValueError, match="Extra inputs are not permitted"):
         RunbookParser().parse(path)

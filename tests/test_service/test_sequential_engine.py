@@ -26,11 +26,13 @@ class FakeProcessRunner:
     def __init__(self, results: list[tuple[int, str, str]]) -> None:
         self.results = results
         self.commands: list[str] = []
+        self.calls: list[tuple[str, int]] = []
 
     def run_command(
         self, command: str, timeout: int, interactive: bool = False
     ) -> tuple[int, str, str]:
         self.commands.append(command)
+        self.calls.append((command, timeout))
         return self.results.pop(0)
 
 
@@ -92,6 +94,7 @@ class FakeIO:
         self.presented: list[tuple[str, int, int]] = []
         self.allowed_choices: list[tuple[str, ...]] = []
         self.outputs: list[tuple[str, str, str]] = []
+        self.condition_skips: list[tuple[str, str | None, int, int, int]] = []
 
     def show_step(
         self,
@@ -113,18 +116,23 @@ class FakeIO:
     def show_result(self, step_id: str, stdout: str, stderr: str) -> None:
         self.outputs.append((step_id, stdout, stderr))
 
+    def show_condition_skip(
+        self,
+        step: ManualStep | CommandStep,
+        position: int,
+        total: int,
+        exit_code: int,
+    ) -> None:
+        self.condition_skips.append(
+            (step.id, step.enabled_if_command, position, total, exit_code)
+        )
 
-def runbook_with(*steps: Any, variables: dict[str, Any] | None = None) -> Runbook:
-    variable_definitions = {
-        name: VariableDefinition(type="bool", default=value)
-        for name, value in (variables or {}).items()
-    }
+
+def runbook_with(*steps: Any) -> Runbook:
     return Runbook(
         id="daily",
         title="Daily",
         steps=list(steps),
-        variable_definitions=variable_definitions,
-        variables=variables or {},
         definition_hash="abc",
         source_path="/tmp/daily.playbook.toml",
     )
@@ -224,15 +232,125 @@ def test_run_whenStepIsDisabled_thenRecordsDisabledWithoutPrompting() -> None:
     assert executions.executions[0].status == NodeStatus.DISABLED
 
 
-def test_run_whenEnabledIfIsFalse_thenRecordsDisabled() -> None:
-    engine, _, executions, _ = engine_with([])
+def test_run_whenGuardSucceeds_thenRunsStepAfterTheGuard() -> None:
+    engine, io, executions, process = engine_with(
+        ["run"],
+        [(0, "", ""), (0, "ok", "")],
+    )
     runbook = runbook_with(
-        CommandStep(id="security", command="check", enabled_if="RUN_SECURITY"),
-        variables={"RUN_SECURITY": False},
+        CommandStep(id="rollback", command="rollback", enabled_if_command="test -f x")
+    )
+
+    result = engine.run(runbook)
+
+    assert result.status == RunStatus.OK
+    assert process.commands == ["test -f x", "rollback"]
+    assert io.condition_skips == []
+    assert executions.executions[0].status == NodeStatus.OK
+
+
+def test_run_whenGuardFails_thenDisablesStepWithoutRunningIt() -> None:
+    engine, io, executions, process = engine_with(
+        [],
+        [(1, "", "no lock")],
+    )
+    runbook = runbook_with(
+        CommandStep(id="rollback", command="rollback", enabled_if_command="test -f x")
+    )
+
+    result = engine.run(runbook)
+
+    assert result.status == RunStatus.OK
+    assert result.nodes_skipped == 1
+    assert process.commands == ["test -f x"]
+    assert io.presented == []
+    assert io.condition_skips == [("rollback", "test -f x", 1, 1, 1)]
+    execution = executions.executions[0]
+    assert execution.status == NodeStatus.DISABLED
+    assert execution.operator_decision == "condition-false"
+    assert execution.exit_code == 1
+    assert execution.stderr == "no lock"
+
+
+def test_run_whenGuardCommandIsMissing_thenTreatsNonZeroExitAsDisabled() -> None:
+    engine, io, executions, _ = engine_with(
+        [],
+        [(127, "", "sh: no-such-command: not found")],
+    )
+    runbook = runbook_with(
+        CommandStep(
+            id="rollback",
+            command="rollback",
+            enabled_if_command="no-such-command",
+        )
     )
 
     engine.run(runbook)
 
+    assert executions.executions[0].status == NodeStatus.DISABLED
+    assert executions.executions[0].exit_code == 127
+    assert io.condition_skips[0][4] == 127
+
+
+def test_run_whenStepIsDisabled_thenGuardIsNeverEvaluated() -> None:
+    engine, _, executions, process = engine_with([])
+    runbook = runbook_with(
+        CommandStep(
+            id="rollback",
+            command="rollback",
+            enabled=False,
+            enabled_if_command="test -f x",
+        )
+    )
+
+    engine.run(runbook)
+
+    assert process.commands == []
+    assert executions.executions[0].status == NodeStatus.DISABLED
+    assert executions.executions[0].operator_decision == "disabled"
+
+
+def test_run_whenGuardHasTimeout_thenPassesItToTheProcessRunner() -> None:
+    engine, _, _, process = engine_with(
+        ["run"],
+        [(0, "", ""), (0, "ok", "")],
+    )
+    runbook = runbook_with(
+        CommandStep(
+            id="rollback",
+            command="rollback",
+            timeout_seconds=300,
+            enabled_if_command="test -f x",
+            enabled_if_timeout_seconds=7,
+        )
+    )
+
+    engine.run(runbook)
+
+    assert process.calls == [("test -f x", 7), ("rollback", 300)]
+
+
+def test_run_whenGuardContainsSecret_thenAnnouncementIsRedacted() -> None:
+    engine, io, executions, _ = engine_with([], [(1, "", "")])
+    runbook = Runbook(
+        id="daily",
+        title="Daily",
+        steps=[
+            CommandStep(
+                id="rollback",
+                command="rollback",
+                enabled_if_command="check --token secret-value",
+            )
+        ],
+        variable_definitions={"API_KEY": VariableDefinition(secret=True)},
+        variables={"API_KEY": "secret-value"},
+        definition_hash="abc",
+        source_path="/tmp/daily.playbook.toml",
+    )
+
+    engine.run(runbook)
+
+    assert io.condition_skips[0][1] == "check --token [REDACTED]"
     assert executions.executions[0].status == NodeStatus.DISABLED
 
 
@@ -432,3 +550,50 @@ def test_resume_whenStepExhaustedAttempts_thenDoesNotExecuteAgain() -> None:
 
     assert process.commands == []
     assert run_repository.get_run("daily", 1).status == RunStatus.ABORTED
+
+
+def test_resume_whenGuardedStepIsIncomplete_thenGuardIsReEvaluated() -> None:
+    run_repository = MemoryRunRepository()
+    run_repository.runs.append(
+        RunInfo(
+            workflow_name="daily",
+            run_id=1,
+            start_time=FixedClock().now(),
+            status=RunStatus.ABORTED,
+            trigger=TriggerType.RUN,
+            source_path="/tmp/daily.playbook.toml",
+            definition_hash="abc",
+        )
+    )
+    executions = MemoryExecutionRepository()
+    executions.executions.append(
+        NodeExecution(
+            workflow_name="daily",
+            run_id=1,
+            node_id="login",
+            attempt=1,
+            start_time=FixedClock().now(),
+            end_time=FixedClock().now(),
+            status=NodeStatus.OK,
+        )
+    )
+    io = FakeIO([])
+    process = FakeProcessRunner([(1, "", "")])
+    engine = RunbookEngine(
+        clock=FixedClock(),
+        process_runner=process,
+        run_repo=run_repository,
+        node_repo=executions,
+        io_handler=io,
+    )
+    runbook = runbook_with(
+        ManualStep(id="login", instructions="Log in."),
+        CommandStep(id="rollback", command="rollback", enabled_if_command="test -f x"),
+    )
+
+    result = engine.resume(runbook, 1)
+
+    assert result.status == RunStatus.OK
+    assert process.commands == ["test -f x"]
+    assert io.condition_skips == [("rollback", "test -f x", 2, 2, 1)]
+    assert executions.executions[-1].status == NodeStatus.DISABLED

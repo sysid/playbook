@@ -33,7 +33,7 @@ class TestCreateCommand:
         assert output_file.exists()
 
         content = tomllib.loads(output_file.read_text())
-        assert content["schema_version"] == 2
+        assert content["schema_version"] == 3
         assert content["runbook"]["id"] == "test-workflow"
         assert content["runbook"]["title"] == "Test Workflow"
         assert content["steps"] == []

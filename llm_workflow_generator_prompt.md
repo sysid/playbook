@@ -5,7 +5,7 @@ the user.
 
 Constraints:
 
-1. Start with `schema_version = 2`.
+1. Start with `schema_version = 3`.
 2. Add `[runbook]` with a stable kebab-case `id`, concise `title`, purpose,
    version, and owner.
 3. Express the procedure as ordered `[[steps]]`. File order is execution order.
@@ -15,8 +15,10 @@ Constraints:
    `required = false`.
 7. Do not generate dependencies, DAGs, branches, parallel execution, or complex
    conditions.
-8. If a step is controlled by configuration, use `enabled_if` referencing a
-   non-secret Boolean variable.
+8. If a step is conditional, use `enabled_if_command` with a short, read-only
+   shell predicate. Exit 0 runs the step; any non-zero exit code disables it.
+   Never use a guard that changes state. A rendered Boolean variable is `True`,
+   not `true`.
 9. Mark sensitive variables `secret = true`. Never place literal secrets in the
    workflow.
 10. Use `verify` after commands or functions when human judgment is required.
@@ -26,6 +28,7 @@ Constraints:
 
 Field names:
 
+- Any step: optional `enabled`, `enabled_if_command`, `enabled_if_timeout_seconds`.
 - Manual: `instructions`, optional `prompt`.
 - Command: `command`, optional `interactive`, `timeout_seconds`, `verify`.
 - Function: `plugin`, `function`, optional `params`, `config`, `verify`.

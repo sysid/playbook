@@ -74,3 +74,12 @@ class NodeIOHandler(Protocol):
 
     def show_result(self, step_id: str, stdout: str, stderr: str) -> None:
         """Display redacted step output."""
+
+    def show_condition_skip(
+        self,
+        step: Step,
+        position: int,
+        total: int,
+        exit_code: int,
+    ) -> None:
+        """Announce a step disabled by its guard command."""

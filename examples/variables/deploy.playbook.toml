@@ -1,4 +1,4 @@
-schema_version = 2
+schema_version = 3
 
 [variables]
 APP_NAME = { default = "myapp", description = "Application name" }
@@ -27,7 +27,8 @@ type = "command"
 name = "Run security review"
 instructions = "Run the example read-only security check."
 command = "printf 'Security review for %s\\n' '{{ APP_NAME }}'"
-enabled_if = "RUN_SECURITY"
+# A rendered bool is 'True', not 'true' - Jinja uses Python capitalisation.
+enabled_if_command = "test '{{ RUN_SECURITY }}' = 'True'"
 verify = "Did the security review pass?"
 
 [[steps]]

@@ -8,7 +8,6 @@ from rich.console import Console
 from rich.logging import RichHandler
 
 from .commands.create import create
-from .commands.migrate import migrate
 from .commands.run import run, resume
 from .commands.show import show
 from .commands.validate import validate
@@ -27,7 +26,6 @@ console = Console()
 # Register commands
 app.command()(create)
 app.command()(validate)
-app.command()(migrate)
 app.command()(run)
 app.command()(resume)
 app.command()(show)

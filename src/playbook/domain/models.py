@@ -42,7 +42,8 @@ class BaseStep(BaseModel):
     instructions: str | None = None
     required: bool = True
     enabled: bool = True
-    enabled_if: str | None = None
+    enabled_if_command: str | None = None
+    enabled_if_timeout_seconds: int = Field(default=30, gt=0)
 
     model_config = {"extra": "forbid"}
 
@@ -54,6 +55,24 @@ class BaseStep(BaseModel):
         ):
             raise ValueError("step id must contain only letters, numbers, '_' or '-'")
         return value
+
+    @field_validator("enabled_if_command")
+    @classmethod
+    def validate_enabled_if_command(cls, value: str | None) -> str | None:
+        # An empty command would be run as `sh -c ""`, which exits 0 and would
+        # therefore silently enable the step it was meant to guard.
+        if value is not None and not value.strip():
+            raise ValueError("enabled_if_command must not be blank")
+        return value
+
+    @model_validator(mode="after")
+    def validate_guard(self) -> BaseStep:
+        if (
+            "enabled_if_timeout_seconds" in self.model_fields_set
+            and self.enabled_if_command is None
+        ):
+            raise ValueError("enabled_if_timeout_seconds requires enabled_if_command")
+        return self
 
 
 class ManualStep(BaseStep):
@@ -135,7 +154,7 @@ class VariableDefinition(BaseModel):
 
 
 class Runbook(BaseModel):
-    schema_version: Literal[2] = 2
+    schema_version: Literal[3] = 3
     id: str
     title: str
     description: str = ""
@@ -154,23 +173,6 @@ class Runbook(BaseModel):
             if step.id in seen:
                 raise ValueError(f"Duplicate step id '{step.id}'")
             seen.add(step.id)
-            if step.enabled_if is None:
-                continue
-            definition = self.variable_definitions.get(step.enabled_if)
-            if definition is None:
-                raise ValueError(
-                    f"Step '{step.id}' enabled_if references unknown variable "
-                    f"'{step.enabled_if}'"
-                )
-            if definition.secret:
-                raise ValueError(
-                    f"Step '{step.id}' enabled_if cannot reference secret variable "
-                    f"'{step.enabled_if}'"
-                )
-            if definition.type != "bool":
-                raise ValueError(
-                    f"Step '{step.id}' enabled_if must reference a bool variable"
-                )
         return self
 
 

@@ -1,4 +1,4 @@
-"""Create a schema-v2 runbook."""
+"""Create a schema-v3 runbook."""
 
 import re
 from pathlib import Path
@@ -57,7 +57,7 @@ def _create_runbook(
         return
 
     document = tomlkit.document()
-    document.add("schema_version", tomlkit.item(2))
+    document.add("schema_version", tomlkit.item(3))
     document.add(tomlkit.nl())
     metadata = tomlkit.table()
     metadata.add("id", workflow_id)

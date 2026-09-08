@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 
 from ..domain.models import (
@@ -202,9 +203,7 @@ class RunbookEngine:
         total: int,
         attempt: int,
     ) -> NodeExecution:
-        if not step.enabled or (
-            step.enabled_if is not None and not bool(runbook.variables[step.enabled_if])
-        ):
+        if not step.enabled:
             return self._record_without_execution(
                 runbook.id,
                 run_info.run_id,
@@ -213,6 +212,13 @@ class RunbookEngine:
                 "disabled",
                 attempt,
             )
+
+        if step.enabled_if_command is not None:
+            skipped = self._evaluate_guard(
+                runbook, run_info, step, position, total, attempt
+            )
+            if skipped is not None:
+                return skipped
 
         self.io_handler.show_step(
             runbook,
@@ -234,6 +240,49 @@ class RunbookEngine:
                 runbook, run_info, step, action, attempt
             )
         return self._execute_until_resolved(runbook, run_info, step, attempt)
+
+    def _evaluate_guard(
+        self,
+        runbook: Runbook,
+        run_info: RunInfo,
+        step: Step,
+        position: int,
+        total: int,
+        attempt: int,
+    ) -> NodeExecution | None:
+        """Run the guard command; return a disabled execution when it fails.
+
+        Shell semantics: exit 0 enables the step, any other exit code disables
+        it. A guard that cannot be executed therefore skips its step, so guards
+        must be side-effect free and are expected to be simple predicates.
+        """
+        assert step.enabled_if_command is not None
+        start_time = self.clock.now()
+        exit_code, stdout, stderr = self.process_runner.run_command(
+            step.enabled_if_command,
+            step.enabled_if_timeout_seconds,
+            False,
+        )
+        if exit_code == 0:
+            return None
+        self.io_handler.show_condition_skip(
+            self._redacted_step(step),
+            position,
+            total,
+            exit_code,
+        )
+        return self._record_without_execution(
+            runbook.id,
+            run_info.run_id,
+            step.id,
+            NodeStatus.DISABLED,
+            "condition-false",
+            attempt,
+            exit_code=exit_code,
+            stdout=self.redactor.redact(stdout),
+            stderr=self.redactor.redact(stderr),
+            start_time=start_time,
+        )
 
     def _record_operator_action(
         self,
@@ -366,7 +415,13 @@ class RunbookEngine:
 
     def _redacted_step(self, step: Step) -> Step:
         updates: dict[str, Any] = {}
-        for field_name in ("instructions", "command", "prompt", "verify"):
+        for field_name in (
+            "instructions",
+            "command",
+            "prompt",
+            "verify",
+            "enabled_if_command",
+        ):
             if hasattr(step, field_name):
                 value = getattr(step, field_name)
                 if value is not None:
@@ -381,18 +436,26 @@ class RunbookEngine:
         status: NodeStatus,
         decision: str,
         attempt: int = 1,
+        exit_code: int | None = None,
+        stdout: str | None = None,
+        stderr: str | None = None,
+        start_time: datetime | None = None,
     ) -> NodeExecution:
         now = self.clock.now()
+        started = start_time or now
         execution = NodeExecution(
             workflow_name=workflow_id,
             run_id=run_id,
             node_id=step_id,
             attempt=attempt,
-            start_time=now,
+            start_time=started,
             end_time=now,
             status=status,
             operator_decision=decision,
-            duration_ms=0,
+            exit_code=exit_code,
+            stdout=stdout,
+            stderr=stderr,
+            duration_ms=int((now - started).total_seconds() * 1000),
         )
         self.node_repo.create_execution(execution)
         return execution

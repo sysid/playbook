@@ -1,4 +1,4 @@
-"""Validate a schema-v2 runbook."""
+"""Validate a schema-v3 runbook."""
 
 from collections import Counter
 from pathlib import Path

@@ -5,7 +5,7 @@
 A workflow is a TOML document with four parts:
 
 ```toml
-schema_version = 2
+schema_version = 3
 
 [variables]
 # Optional variable definitions
@@ -45,10 +45,47 @@ run from being resumed.
 | `instructions` | none | Context and action for the operator |
 | `required` | `true` | When false, skip is offered |
 | `enabled` | `true` | When false, record as disabled |
-| `enabled_if` | none | Name of a non-secret Boolean variable |
+| `enabled_if_command` | none | Guard command; exit 0 enables the step |
+| `enabled_if_timeout_seconds` | `30` | Guard timeout; requires `enabled_if_command` |
 
 Steps execute exactly in file order. A disabled step still occupies its
 position, is recorded as disabled, and does not prompt.
+
+## Conditional steps
+
+`enabled_if_command` is evaluated when the step is reached, before the operator
+is prompted:
+
+```toml
+[[steps]]
+id = "rollback"
+type = "command"
+command = "./scripts/rollback"
+enabled_if_command = "test -f /var/run/deploy.lock"
+enabled_if_timeout_seconds = 30
+```
+
+| Guard result | Step outcome |
+| --- | --- |
+| exit 0 | Presented to the operator as usual |
+| any non-zero exit | Recorded as disabled with decision `condition-false` |
+| command not found, timeout, execution error | Non-zero, so also disabled |
+
+The guard's exit code, stdout, and stderr are redacted and persisted with the
+disabled step. One console line names the step, the guard, and the exit code;
+nothing else is printed and the operator is not prompted.
+
+Guards run without operator confirmation, so they must be side-effect free.
+They are re-evaluated on resume for steps that are not yet complete.
+
+A rendered Boolean variable uses Python capitalisation, so compare against
+`True` rather than `true`:
+
+```toml
+enabled_if_command = "test '{{ RUN_SECURITY }}' = 'True'"
+```
+
+`enabled = false` disables a step unconditionally and its guard is never run.
 
 ## Manual step
 

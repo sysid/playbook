@@ -33,6 +33,9 @@ class RunIO:
     def show_result(self, step_id, stdout, stderr):
         pass
 
+    def show_condition_skip(self, step, position, total, exit_code):
+        pass
+
 
 def engine(tmp_path: Path, registry: PluginRegistry) -> RunbookEngine:
     database = tmp_path / "state.db"

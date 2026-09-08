@@ -97,7 +97,10 @@ def test_show_reports_when_no_runs_exist(cli_runner, temp_dir):
 def test_show_without_workflow_summarises_every_workflow(cli_runner, temp_dir):
     database = temp_dir / "state.db"
     runs = SQLiteRunRepository(str(database))
-    for workflow, status in (("daily", RunStatus.OK), ("deploy-ecs", RunStatus.ABORTED)):
+    for workflow, status in (
+        ("daily", RunStatus.OK),
+        ("deploy-ecs", RunStatus.ABORTED),
+    ):
         runs.create_run(
             RunInfo(
                 workflow_name=workflow,

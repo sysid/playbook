@@ -1,6 +1,6 @@
 # Repository guidance
 
-Playbook is a Python 3.13 guided workflow runner. Schema v2 is intentionally
+Playbook is a Python 3.13 guided workflow runner. Schema v3 is intentionally
 linear: `[[steps]]` execute in file order. Do not reintroduce DAG dependencies,
 parallel execution, scheduling, or implicit automation.
 
@@ -13,6 +13,11 @@ SQLite state uses only the current schema. There is no database migration or
 runtime compatibility layer; incompatible state databases must be archived or
 deleted.
 
+The one deliberate exception is `enabled_if_command`: a step's guard command
+runs without operator confirmation, because it is a predicate rather than an
+action. Guards must stay side-effect free. Do not extend this into running any
+other step automatically.
+
 The plugin system is part of the supported architecture. Plugin instances are
 created and configured per step, then cleaned up.
 
@@ -20,8 +25,7 @@ created and configured per step, then cleaned up.
 
 - `domain/`: Pydantic models, plugin contracts, and ports.
 - `service/engine.py`: ordered operator interaction and execution policy.
-- `infrastructure/`: TOML parsing, workflow-file migration, current SQLite
-  state, variables,
+- `infrastructure/`: TOML parsing, current SQLite state, variables,
   process execution, locking, plugins, and redaction.
 - `cli/`: Typer commands and Rich terminal interaction.
 

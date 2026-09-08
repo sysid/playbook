@@ -27,7 +27,7 @@ The published package requires `playbook>=2,<3`.
 Credentials belong in secret variables and are configured per function step:
 
 ```toml
-schema_version = 2
+schema_version = 3
 
 [variables]
 SLACK_WEBHOOK = { required = true, secret = true }

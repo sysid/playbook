@@ -53,6 +53,23 @@ class ConsoleNodeIOHandler(NodeIOHandler):
             )
         )
 
+    def show_condition_skip(
+        self,
+        step: Step,
+        position: int,
+        total: int,
+        exit_code: int,
+    ) -> None:
+        self.console.print()
+        self.console.print(
+            f"  [bold]step {position} of {total} / "
+            f"{step.name or step.id}[/bold] skipped"
+        )
+        self.console.print(
+            Text(f"  condition `{step.enabled_if_command}` exited {exit_code}"),
+            style="dim",
+        )
+
     def choose(self, prompt: str, choices: tuple[str, ...]) -> str:
         self.console.print()
         return Prompt.ask(f"  {prompt}", choices=list(choices), default=choices[0])

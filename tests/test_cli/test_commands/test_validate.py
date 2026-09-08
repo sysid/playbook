@@ -15,7 +15,7 @@ def test_validate_success(cli_runner, temp_toml_file):
 
 def test_validate_parse_error(cli_runner, temp_dir):
     invalid = temp_dir / "invalid.playbook.toml"
-    invalid.write_text("schema_version = 2\n")
+    invalid.write_text("schema_version = 3\n")
 
     result = cli_runner.invoke(app, ["validate", str(invalid)])
 
@@ -34,7 +34,7 @@ def test_validate_accepts_required_variables(cli_runner, temp_dir):
     workflow = temp_dir / "required.playbook.toml"
     workflow.write_text(
         """
-schema_version = 2
+schema_version = 3
 [variables]
 ENVIRONMENT = { required = true }
 [runbook]

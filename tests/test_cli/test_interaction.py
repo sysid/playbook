@@ -72,7 +72,10 @@ def test_step_panels_are_separated_by_blank_lines():
 
     lines = console.export_text().splitlines()
     assert lines[0].strip() == ""
-    assert lines[lines.index(next(x for x in lines if "step 2 of 2" in x)) - 1].strip() == ""
+    assert (
+        lines[lines.index(next(x for x in lines if "step 2 of 2" in x)) - 1].strip()
+        == ""
+    )
 
 
 def test_command_output_is_indented_without_padding_to_console_width():
@@ -84,3 +87,22 @@ def test_command_output_is_indented_without_padding_to_console_width():
     output = console.export_text()
     assert "  first line\n" in output
     assert "  second line\n" in output
+
+
+def test_condition_skip_names_the_step_command_and_exit_code():
+    console = Console(record=True, width=120)
+    handler = ConsoleNodeIOHandler(console)
+    step = CommandStep(
+        id="rollback",
+        name="Roll back",
+        command="./rollback",
+        enabled_if_command="test -f /var/run/deploy.lock",
+    )
+
+    handler.show_condition_skip(step, 3, 7, 1)
+
+    output = console.export_text()
+    assert "step 3 of 7" in output
+    assert "Roll back" in output
+    assert "test -f /var/run/deploy.lock" in output
+    assert "exited 1" in output

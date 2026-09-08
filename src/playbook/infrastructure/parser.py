@@ -11,6 +11,15 @@ from ..domain.models import Runbook, VariableDefinition
 from .variables import VariableManager
 
 
+def _unsupported_version(found: Any) -> str:
+    """Name the version that was found and the field that replaced 'enabled_if'."""
+    seen = "missing" if found is None else repr(found)
+    return (
+        f"Unsupported schema_version ({seen}). This release requires "
+        "schema_version = 3; replace 'enabled_if' with 'enabled_if_command'."
+    )
+
+
 class RunbookParser:
     def __init__(self, variable_manager: VariableManager | None = None) -> None:
         self.variable_manager = variable_manager
@@ -32,11 +41,8 @@ class RunbookParser:
         except (UnicodeDecodeError, tomllib.TOMLDecodeError) as error:
             raise ValueError(f"Cannot parse runbook TOML: {error}") from error
 
-        if initial_data.get("schema_version") != 2:
-            raise ValueError(
-                "Unsupported or missing schema_version. Convert this workflow with "
-                f"'playbook migrate {path}'."
-            )
+        if initial_data.get("schema_version") != 3:
+            raise ValueError(_unsupported_version(initial_data.get("schema_version")))
 
         definitions = self._parse_variable_definitions(
             initial_data.get("variables", {})
@@ -89,10 +95,8 @@ class RunbookParser:
             data = tomllib.loads(path.read_text())
         except (OSError, tomllib.TOMLDecodeError) as error:
             raise ValueError(f"Cannot read variable definitions: {error}") from error
-        if data.get("schema_version") != 2:
-            raise ValueError(
-                "Unsupported or missing schema_version. Use 'playbook migrate'."
-            )
+        if data.get("schema_version") != 3:
+            raise ValueError(_unsupported_version(data.get("schema_version")))
         return self._parse_variable_definitions(data.get("variables", {}))
 
     @staticmethod

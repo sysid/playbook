@@ -52,7 +52,7 @@ make check
 Workflow files end in `.playbook.toml` and declare schema version 2.
 
 ```toml
-schema_version = 2
+schema_version = 3
 
 [runbook]
 id = "daily-checks"
@@ -101,7 +101,6 @@ playbook resume daily.playbook.toml
 playbook show
 playbook show daily-checks
 playbook show daily-checks --run-id 3
-playbook migrate legacy.playbook.toml --output daily.playbook.toml
 ```
 
 `playbook show` without a workflow summarises every workflow in the state
@@ -114,8 +113,9 @@ database at `~/.config/playbook/run.db`.
 
 State databases are tied to the current Playbook version. Playbook does not
 migrate database schemas or preserve run history across incompatible releases.
-Archive or delete an incompatible database and start a new run. The
-`playbook migrate` command applies only to workflow definition files.
+Archive or delete an incompatible database and start a new run. Workflow files
+are not migrated either: a file below `schema_version = 3` is rejected with a
+message naming the required version.
 
 Command and function steps allow at most three executions by default. Use
 `--max-attempts` on `run` or `resume` to change that limit for the process.
@@ -140,28 +140,60 @@ Secret variables:
 
 - are entered with hidden terminal input;
 - are not stored in run metadata;
-- are replaced with `[REDACTED]` in captured output and errors;
-- cannot control `enabled_if`.
+- are replaced with `[REDACTED]` in captured output and errors.
 
 Redaction is exact-value replacement, not a secret manager. Prefer environment
 variables or an external secret provider and avoid transforming or printing
-secrets in commands.
+secrets in commands. A secret interpolated into a `command` or an
+`enabled_if_command` is exposed to the process table like any other argument.
 
 ## Conditional steps
 
-The only workflow condition is a direct reference to a non-secret Boolean
-variable:
+A step can be gated on a guard command. The guard runs when the step is
+reached, and its exit code decides whether the step is presented:
 
 ```toml
+[[steps]]
+id = "rollback"
+type = "command"
+command = "./scripts/rollback"
+enabled_if_command = "test -f /var/run/deploy.lock"
+enabled_if_timeout_seconds = 30
+```
+
+Plain shell semantics apply: exit `0` runs the step, **any** non-zero exit code
+disables it. A guard that cannot be executed at all — a typo, a missing script,
+a timeout — also exits non-zero and therefore skips its step silently apart from
+one console line. Keep guards short and verify them with `playbook validate`
+and a dry run.
+
+Guards must be side-effect free. They are predicates, and unlike every other
+command in a workflow they run without asking the operator first.
+
+`enabled_if_timeout_seconds` defaults to 30 and may only be set together with
+`enabled_if_command`.
+
+A guard is evaluated once per attempt, including on `resume` for steps that are
+not yet complete. Steps already recorded as complete, skipped, or disabled are
+not re-evaluated.
+
+Comparing against a Boolean variable needs care. Rendered Booleans use Python
+capitalisation, so the comparison value is `True`, not `true`:
+
+```toml
+[variables]
+RUN_SECURITY = { type = "bool", default = true }
+
 [[steps]]
 id = "security-review"
 type = "command"
 command = "./scripts/security-review"
-enabled_if = "RUN_SECURITY"
+enabled_if_command = "test '{{ RUN_SECURITY }}' = 'True'"
 ```
 
-Use `enabled = false` to keep a step in the document while disabling it.
-Disabled steps are recorded and do not prompt the operator.
+Use `enabled = false` to keep a step in the document while disabling it
+unconditionally. A disabled step never evaluates its guard, is recorded as
+disabled, and does not prompt the operator.
 
 ## Resume and concurrency
 
@@ -196,18 +228,6 @@ verify = "Was the notification delivered?"
 
 A fresh plugin instance is configured for each step and cleaned up immediately
 after execution. This prevents configuration leaking between steps.
-
-## Migration from schema v1
-
-```bash
-playbook migrate old.playbook.toml --output new.playbook.toml
-```
-
-The migrator converts dependency order to a stable linear order. It refuses
-unsafe mappings such as cycles, conditional dependencies, and complex
-conditions. Review and validate migrated files before running them.
-
-This command does not migrate SQLite state or execution history.
 
 ## Development
 
