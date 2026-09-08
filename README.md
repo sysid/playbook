@@ -147,6 +147,36 @@ variables or an external secret provider and avoid transforming or printing
 secrets in commands. A secret interpolated into a `command` or an
 `enabled_if_command` is exposed to the process table like any other argument.
 
+### Go templates collide with `{{ }}`
+
+Jinja renders the whole workflow file as text before it is parsed as TOML, so
+`{{ ... }}` belongs to Playbook in *every* field. Tools with their own
+`{{ ... }}` syntax — `docker --format`, `kubectl -o go-template`, `helm` — clash
+with it:
+
+```toml
+# Fails: Jinja reads '.Server.Version' as its own expression
+command = "docker version --format '{{.Server.Version}}'"
+```
+
+```
+TemplateRenderError: Template rendering failed: unexpected '.'
+```
+
+The trap is that this depends on whether the workflow has variables at all.
+Rendering is skipped entirely when `[variables]` is empty, so the line above
+works until someone adds the first variable, and then every such command in the
+file breaks at once.
+
+Avoid the collision rather than escaping it: pick a flag that needs no template
+(`docker version --format json`, `kubectl -o jsonpath=...` uses single braces),
+or move the template into a script and call the script.
+
+A `{% raw %}` block is not a reliable escape, because it fails in the mirror
+image of the same trap: it produces the intended command while variables exist,
+and leaks the literal `{% raw %}` markers into the command as soon as they do
+not.
+
 ## Conditional steps
 
 A step can be gated on a guard command. The guard runs when the step is
